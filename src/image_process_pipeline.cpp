@@ -1,11 +1,8 @@
 #include "image_process_pipeline.h"
 
-#include <iostream>
-#include <Eigen/Dense>
-#include <vector>
-
-
-void gemv(const std::vector<std::vector<double>>& matrix, const std::vector<double>& vec, std::vector<double>& out) {
+void gemv(const std::vector<std::vector<double>>& matrix,
+          const std::vector<double>& vec, 
+          std::vector<double>& out) {
     int rows = matrix.size();
     int cols = matrix[0].size();
     out.assign(rows, 0.0);
@@ -55,7 +52,10 @@ void crop(){
 }
 
 
-void processImage(const std::vector<double>& image, std::vector<double>& out){
+void processImage(const std::vector<double>& image, 
+                  const std::vector<std::vector<double>>& pca_components, 
+                  const std::vector<double>& mean,
+                  std::vector<double>& out){
     
     //BEHOLD! The image processing pipeline!
 
@@ -66,6 +66,6 @@ void processImage(const std::vector<double>& image, std::vector<double>& out){
     downsample();
     
     //Step 3: Project to PCA space
-    //pcaProject();
+    pcaProject(image, pca_components, mean, out);
 }
 
