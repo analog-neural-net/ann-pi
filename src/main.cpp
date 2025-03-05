@@ -61,9 +61,7 @@ int main() {
     std::vector<double> test_image = loadVectorCSV("./data/test_image.csv", num_features);
 
     std::vector<double> test_image_pca_coefficients = loadVectorCSV("./data/test_image_pca_coefficients.csv", num_components);
-
-    printf("hello");
-
+    
     std::vector<double> pca_projection;
 
     processImage(test_image, pca_components, mean_vector, pca_projection);
@@ -71,6 +69,6 @@ int main() {
     for (int i = 0; i < pca_projection.size(); i++){
         printf("Error: %lf%\n", std::fabs((test_image_pca_coefficients[i]-pca_projection[i])/test_image_pca_coefficients[i])*100);
     }
-    
+
     return 0;
 }
