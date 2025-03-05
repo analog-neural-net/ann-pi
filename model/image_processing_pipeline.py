@@ -11,12 +11,56 @@ _, thresholded_image = cv2.threshold(image, threshold_value, 255, cv2.THRESH_BIN
 cv2.imwrite("../data/test_8_contrast_boosted.png", thresholded_image)
 
 # Step 2: Downsample to 28x28
-downsampled_image = cv2.resize(thresholded_image, (28, 28), interpolation=cv2.INTER_AREA)
-cv2.imwrite("../data/test_8_downsampled_28x28.png", downsampled_image)
+downsampled_image_area = cv2.resize(thresholded_image, (28, 28), interpolation=cv2.INTER_AREA)
+cv2.imwrite("../data/test_8_downsampled_28x28.png", downsampled_image_area)
+
+# Step 2: Downsample to 28x28 using manual INTER_AREA
+def inter_area_downsample(image, new_width, new_height):
+    """
+    Manually downsamples an image using INTER_AREA interpolation (area averaging).
+    
+    Parameters:
+    - image: NumPy 2D array (grayscale image)
+    - new_width: Target width
+    - new_height: Target height
+    
+    Returns:
+    - Downsampled image as a NumPy 2D array
+    """
+    old_height, old_width = image.shape
+
+    # Scale factors
+    scale_x = old_width / new_width
+    scale_y = old_height / new_height
+
+    # Create output image
+    downsampled = np.zeros((new_height, new_width), dtype=np.uint8)
+
+    for y in range(new_height):
+        for x in range(new_width):
+            # Define the corresponding region in the original image
+            start_x = int(x * scale_x)
+            end_x = min(int((x + 1) * scale_x), old_width)
+            start_y = int(y * scale_y)
+            end_y = min(int((y + 1) * scale_y), old_height)
+
+            # Compute the mean intensity of the region
+            region = image[start_y:end_y, start_x:end_x]
+            downsampled[y, x] = np.mean(region).astype(np.uint8)
+
+    return downsampled
+
+# Apply manual INTER_AREA downsampling
+downsampled_image_manual = inter_area_downsample(thresholded_image, 28, 28)
+cv2.imwrite("../data/test_8_downsampled_manual_inter_area_28x28.png", downsampled_image_manual)
+
+# Step 2 (Alternate): Downsample using OpenCV's Bilinear for comparison
+downsampled_image_bilinear = cv2.resize(thresholded_image, (28, 28), interpolation=cv2.INTER_LINEAR)
+cv2.imwrite("../data/test_8_downsampled_bilinear_28x28.png", downsampled_image_bilinear)
 
 # Step 3: Apply a Second Threshold for Contrast Boost
 threshold_value = 200
-_, thresholded_image = cv2.threshold(downsampled_image, threshold_value, 255, cv2.THRESH_BINARY)
+_, thresholded_image = cv2.threshold(downsampled_image_area, threshold_value, 255, cv2.THRESH_BINARY)
 cv2.imwrite("../data/test_8_downsampled_28x28_contrast_boosted.png", thresholded_image)
 
 # ================= APPLYING DSP TECHNIQUES =================== #
