@@ -3,6 +3,16 @@
 #ifndef GPIO_H
 #define GPIO_H  
 
+typedef enum {
+    INPUT,
+    OUTPUT,
+    ALT5,
+    ALT4,
+    ALT0,
+    ALT1,
+    ALT2,
+    ALT3
+} FUNCTION;
 
 #define GPFSEL0                      GPIO_BASE_ADDR + GPFSEL0_OFFSET
 #define GPFSEL1                      GPIO_BASE_ADDR + GPFSEL1_OFFSET
@@ -67,17 +77,44 @@
 #define GPIO_PUP_PDN_CNTRL_REG2_OFFSET      0x000000ECu
 #define GPIO_PUP_PDN_CNTRL_REG3_OFFSET      0x000000F0u
 
-void gpio_setbit(uint8_t pin, uint32_t* reg){
+void __gpio_setbit(uint8_t pin, uint32_t* reg){
     *reg |= 1 << pin;
 }
 
-void gpio_clearbit(uint8_t pin, uint32_t* reg){
+void __gpio_clearbit(uint8_t pin, uint32_t* reg){
     *reg &= ~(1 << pin);
 }
 
-void gpio_togglebit(uint8_t pin, uint32_t* reg){
+void __gpio_togglebit(uint8_t pin, uint32_t* reg){
     *reg ^= 1 << pin;
 }
+
+void gpio_func_select(FUNCTION func, uint8_t pin){
+    uint8_t reg_num = pin/10;
+    uint8_t pin_pos = pin%10;
+
+    if (reg_num == 0){
+        *((uint32_t*)GPFSEL0) |= (func << 3*pin_pos); 
+    }
+    if (reg_num == 1){
+        *((uint32_t*)GPFSEL1) |= (func << 3*pin_pos); 
+    }
+    if (reg_num == 2){
+        *((uint32_t*)GPFSEL2) |= (func << 3*pin_pos); 
+    }
+    if (reg_num == 3){
+        *((uint32_t*)GPFSEL3) |= (func << 3*pin_pos); 
+    }
+    if (reg_num == 4){
+        *((uint32_t*)GPFSEL4) |= (func << 3*pin_pos); 
+    }
+    if (reg_num == 5){
+        *((uint32_t*)GPFSEL5) |= (func << 3*pin_pos); 
+    }
+}
+
+
+
 
 #endif
 

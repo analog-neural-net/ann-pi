@@ -4,6 +4,7 @@
 #include <fstream>
 
 #include "image_process_pipeline.h"
+#include "gpio.h"
 
 // Function to load a CSV file into a 2D vector (Matrix)
 std::vector<std::vector<double>> loadMatrixCSV(const std::string& filename, int rows, int cols) {
@@ -69,6 +70,9 @@ int main() {
     for (int i = 0; i < pca_projection.size(); i++){
         printf("Error: %lf%\n", std::fabs((test_image_pca_coefficients[i]-pca_projection[i])/test_image_pca_coefficients[i])*100);
     }
+
+    gpio_func_select(ALT3, 23); // Set GPIO pin 23 to alternate function 3
+    gpio_func_select(INPUT, 18); // Set GPIO pin 18 to input
 
     return 0;
 }
