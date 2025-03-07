@@ -119,8 +119,6 @@ uint8_t computeThreshold(const std::vector<uint8_t>& image){
         bins[image[i]]++;
     }
 
-    int peak1 = std::max_element(bins.begin(), bins.end()) - bins.begin();
-
     std::vector<int> peaks;
     for (int i = 1; i < 255; i++) { 
         if (bins[i] > bins[i - 1] && bins[i] > bins[i + 1]) {
@@ -163,14 +161,18 @@ void processImage(const std::vector<double>& image,
     //Step 1: Crop the image (white border)
     crop();
 
-    //Step 2: Contrast boost
+    //Compute threshold
+    //uint8_t threshold = computeThreshold();
 
+    //Step 2: Contrast boost
+    //threshold();
 
     //Step 3: Downsample the image
     downsample();
 
     //Step 4: Invert the image
-    
+    //invert();
+
     //Step 3: Project to PCA space
     pcaProject(image, pca_components, mean, out);
 }
