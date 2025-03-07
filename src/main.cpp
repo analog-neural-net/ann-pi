@@ -50,6 +50,7 @@ std::vector<double> loadVectorCSV(const std::string& filename, int size) {
 }
 
 int main() {
+    /*
     int num_features = 784;
     int num_components = 12;
 
@@ -70,9 +71,21 @@ int main() {
     for (int i = 0; i < pca_projection.size(); i++){
         printf("Error: %lf%\n", std::fabs((test_image_pca_coefficients[i]-pca_projection[i])/test_image_pca_coefficients[i])*100);
     }
+    */
 
-    gpio_func_select(ALT3, 23); // Set GPIO pin 23 to alternate function 3
-    gpio_func_select(INPUT, 18); // Set GPIO pin 18 to input
+    //gpio_func_select(ALT3, 23); // Set GPIO pin 23 to alternate function 3
+    //gpio_func_select(INPUT, 18); // Set GPIO pin 18 to input
+    uint32_t* GPIO_ADDR;
+    GPIO_ADDR = 0x7E200000u;
+    
+    printf("%d\n", *GPIO_ADDR);
+    exit(1);
+    
+    gpio_func_select(OUTPUT, 23);
+    printf("hello");
+    exit(1);
+    gpio_pin_write(23, 1);
+    
 
     return 0;
 }
