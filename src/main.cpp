@@ -75,17 +75,12 @@ int main() {
 
     //gpio_func_select(ALT3, 23); // Set GPIO pin 23 to alternate function 3
     //gpio_func_select(INPUT, 18); // Set GPIO pin 18 to input
-    uint32_t* GPIO_ADDR;
-    GPIO_ADDR = 0x7E200000u;
-    
-    printf("%d\n", *GPIO_ADDR);
-    exit(1);
+    gpio_init();
     
     gpio_func_select(OUTPUT, 23);
-    printf("hello");
-    exit(1);
-    gpio_pin_write(23, 1);
+    gpio_set(23);
     
+    scanf("Press enter to quit\n");
 
     return 0;
 }
