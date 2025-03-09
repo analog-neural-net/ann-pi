@@ -52,6 +52,7 @@ std::vector<double> loadVectorCSV(const std::string& filename, int size) {
 }
 
 int main() {
+    /*
     int num_features = 784;
     int num_components = 12;
 
@@ -72,6 +73,7 @@ int main() {
     for (int i = 0; i < pca_projection.size(); i++){
         printf("Error: %lf%\n", std::fabs((test_image_pca_coefficients[i]-pca_projection[i])/test_image_pca_coefficients[i])*100);
     }
+    */
 
     int width, height, channels;
     unsigned char* img = stbi_load("data/720p_test_8.jpg", &width, &height, &channels, 1);
