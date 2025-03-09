@@ -44,32 +44,30 @@ void pcaProject(const std::vector<double>& image,
 }
 
 
-std::vector<double> downsampleInterArea(const std::vector<double>& image, 
-                                        int oldWidth, 
-                                        int oldHeight, 
-                                        int newWidth, 
-                                        int newHeight,
-                                        std::vector<double>& out) {
+void downsampleInterArea(const std::vector<uint8_t>& image, 
+                         int oldWidth, 
+                         int oldHeight, 
+                         int newWidth, 
+                         int newHeight,
+                         std::vector<uint8_t>& out) {
 
     double scaleX = static_cast<double>(oldWidth) / newWidth;
     double scaleY = static_cast<double>(oldHeight) / newHeight;
 
-    out.assign(newWidth*newHeight, 0.0);
+    out.assign(newWidth * newHeight, 0);
 
     for (int y = 0; y < newHeight; ++y) {
         for (int x = 0; x < newWidth; ++x) {
-            // Define the region in the original image
             int startX = static_cast<int>(x * scaleX);
             int endX = static_cast<int>((x + 1) * scaleX);
             int startY = static_cast<int>(y * scaleY);
             int endY = static_cast<int>((y + 1) * scaleY);
 
-            // Clamp to image bounds
             endX = std::min(endX, oldWidth);
             endY = std::min(endY, oldHeight);
 
             // Compute the average intensity over the mapped region
-            float sum = 0.0f;
+            int sum = 0;
             int count = 0;
             for (int yy = startY; yy < endY; ++yy) {
                 for (int xx = startX; xx < endX; ++xx) {
@@ -78,7 +76,8 @@ std::vector<double> downsampleInterArea(const std::vector<double>& image,
                 }
             }
 
-            out[y * newWidth + x] = (count > 0) ? sum / count : 0.0f;
+            // Store the downsampled pixel value 
+            out[y * newWidth + x] = (count > 0) ? static_cast<uint8_t>(sum / count) : 0;
         }
     }
 }
@@ -94,7 +93,7 @@ void crop(){
 void invert(const std::vector<uint8_t>& image,
             std::vector<uint8_t>& out) {
     
-    out.assign(image.size(), 0.0);
+    out.assign(image.size(), 0);
 
     for (int i = 0; i < image.size(); i++){
         out[i] = 255 - image[i];
@@ -105,6 +104,8 @@ void invert(const std::vector<uint8_t>& image,
 void threshold(const std::vector<uint8_t>& image,
                uint8_t threshold,
                std::vector<uint8_t>& out){
+            
+    out.assign(image.size(), 0);
 
     for (int i = 0; i < image.size(); i++){
         out[i] = image[i] < threshold ? 0 : 255;
@@ -163,12 +164,13 @@ void processImage(const std::vector<double>& image,
 
     //Compute threshold
     //uint8_t threshold = computeThreshold();
+    uint8_t threshold = BLACK_THRESHOLD;
 
     //Step 2: Contrast boost
     //threshold();
 
     //Step 3: Downsample the image
-    downsample();
+    //downsample();
 
     //Step 4: Invert the image
     //invert();

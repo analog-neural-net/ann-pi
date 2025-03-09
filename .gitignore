@@ -1,0 +1,29 @@
+# Ignore build and compiled files
+/build/
+*.exe
+*.out
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dll
+*.dylib
+
+# Ignore CMake and Makefile generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+*.cmake
+*.ninja
+
+# Ignore system-generated files
+.DS_Store
+Thumbs.db
+
+# Ignore VS Code settings (optional)
+.vscode/
+c_cpp_properties.json
+tasks.json
+launch.json

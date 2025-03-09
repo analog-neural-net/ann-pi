@@ -5,6 +5,8 @@
 
 #include "image_process_pipeline.h"
 #include "gpio.h"
+#include "stb/stb_image.h"
+#include "stb/stb_image_write.h"
 
 // Function to load a CSV file into a 2D vector (Matrix)
 std::vector<std::vector<double>> loadMatrixCSV(const std::string& filename, int rows, int cols) {
@@ -71,8 +73,36 @@ int main() {
         printf("Error: %lf%\n", std::fabs((test_image_pca_coefficients[i]-pca_projection[i])/test_image_pca_coefficients[i])*100);
     }
 
-    gpio_func_select(ALT3, 23); // Set GPIO pin 23 to alternate function 3
-    gpio_func_select(INPUT, 18); // Set GPIO pin 18 to input
+    int width, height, channels;
+    unsigned char* img = stbi_load("data/720p_test_8.jpg", &width, &height, &channels, 1);
+
+    if (!img) {
+        std::cerr << "Error: Could not load image!" << std::endl;
+        return -1;
+    }
+
+    std::vector<uint8_t> image_data(img, img + (width * height));
+    std::vector<uint8_t> thresholded_image = std::vector<uint8_t>();
+    std::vector<uint8_t> downsampled_image = std::vector<uint8_t>();
+
+    stbi_image_free(img);
+
+    threshold(image_data, BLACK_THRESHOLD, thresholded_image);
+
+    downsampleInterArea(thresholded_image, width, height, 28, 28, downsampled_image);
+
+
+    const char* output_filename = "data/downsampled_cpp.jpg";
+    //write downsampled image to a jpg
+    int quality = 100;  // JPG quality
+
+    bool success = stbi_write_jpg(output_filename, 28, 28, 1, downsampled_image.data(), quality);
+
+    std::cout << "Loaded image: " << width << "x" << height << " with " << channels << " channels" << std::endl;
+
+    return 0;
+    //gpio_func_select(ALT3, 23); // Set GPIO pin 23 to alternate function 3
+    //gpio_func_select(INPUT, 18); // Set GPIO pin 18 to input
 
     return 0;
 }
