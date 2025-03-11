@@ -1,4 +1,11 @@
 #include "image_process_pipeline.h"
+#include "utilities.h"
+
+
+void image_processing_init(){
+    __pca_components = loadMatrixCSV("./data/pca_components.csv", COMPONENTS, FEATURES);
+    __mean_vector = loadVectorCSV("./data/mean.csv", FEATURES);
+}
 
 void gemv(const std::vector<std::vector<double>>& matrix,
           const std::vector<double>& vec, 
@@ -13,7 +20,6 @@ void gemv(const std::vector<std::vector<double>>& matrix,
         }
     }
 }
-
 
 void pcaProject(const std::vector<double>& image, 
                 const std::vector<std::vector<double>>& pca_components, 
@@ -42,7 +48,6 @@ void pcaProject(const std::vector<double>& image,
         }
     }
 }
-
 
 void downsampleInterArea(const std::vector<uint8_t>& image, 
                          int oldWidth, 
@@ -152,7 +157,7 @@ uint8_t computeThreshold(const std::vector<uint8_t>& image){
     return static_cast<uint8_t>(minIndex);
 }
 
-void processImage(const std::vector<double>& image, 
+void process_image(const std::vector<double>& image, 
                   const std::vector<std::vector<double>>& pca_components, 
                   const std::vector<double>& mean,
                   std::vector<double>& out){

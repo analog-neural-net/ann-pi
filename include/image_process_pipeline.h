@@ -6,8 +6,23 @@
 #include <vector>
 
 #define BLACK_THRESHOLD 40
+#define WHITE_THRESHOLD 200
 
-void processImage(const std::vector<double>& image, 
+#define DOWNSAMPLE_SIZE 28
+
+#define FEATURES 784
+#define COMPONENTS 12
+// typedef enum{
+//     THRESHOLD_UP = 0,
+//     THRESHOLD_DOWN = 1,
+// }DIRECTION
+
+std::vector<std::vector<double>> __pca_components;
+std::vector<double> __mean_vector;
+
+void image_processing_init();
+
+void process_image(const std::vector<double>& image, 
                   const std::vector<std::vector<double>>& pca_components, 
                   const std::vector<double>& mean,
                   std::vector<double>& out);

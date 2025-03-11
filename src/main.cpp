@@ -5,6 +5,7 @@
 
 #include "image_process_pipeline.h"
 #include "gpio.h"
+#include "uart.h"
 #include "stb/stb_image.h"
 #include "stb/stb_image_write.h"
 
@@ -52,6 +53,14 @@ std::vector<double> loadVectorCSV(const std::string& filename, int size) {
 }
 
 int main() {
+    gpio_init();
+    uart_init();
+    image_processing_init();
+
+    gpio_func_select(INPUT, 23);
+    gpio_func_select(ALT0, 14);
+    gpio_func_select(ALT0, 15);
+
     /*
     int num_features = 784;
     int num_components = 12;
@@ -93,6 +102,16 @@ int main() {
 
     downsampleInterArea(thresholded_image, width, height, 28, 28, downsampled_image);
 
+    threshold(downsampled_image, WHITE_THRESHOLD, thresholded_image);
+
+    //apply gaussian blur on thresholded image
+    
+    //darken
+    
+    //invert
+    
+    //project onto pca space
+
 
     const char* output_filename = "data/downsampled_cpp.jpg";
     //write downsampled image to a jpg
@@ -102,7 +121,6 @@ int main() {
 
     std::cout << "Loaded image: " << width << "x" << height << " with " << channels << " channels" << std::endl;
 
-    return 0;
     //gpio_func_select(ALT3, 23); // Set GPIO pin 23 to alternate function 3
     //gpio_func_select(INPUT, 18); // Set GPIO pin 18 to input
 
