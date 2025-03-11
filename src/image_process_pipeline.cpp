@@ -1,6 +1,9 @@
 #include "image_process_pipeline.h"
 #include "utilities.h"
+#include "stb/stb_image_write.h"
 
+std::vector<std::vector<double>> __pca_components;
+std::vector<double> __mean_vector;
 
 void image_processing_init(){
     __pca_components = loadMatrixCSV("./data/pca_components.csv", COMPONENTS, FEATURES);
@@ -22,16 +25,14 @@ void gemv(const std::vector<std::vector<double>>& matrix,
 }
 
 void pcaProject(const std::vector<double>& image, 
-                const std::vector<std::vector<double>>& pca_components, 
-                const std::vector<double>& mean,
                 std::vector<double>& out) {
     
-    int num_components = pca_components.size();  
-    int num_features = pca_components[0].size(); 
+    int num_components = __pca_components.size();  
+    int num_features = __pca_components[0].size(); 
 
     out.assign(num_components, 0.0);
 
-    if (image.size() != num_features || mean.size() != num_features) {
+    if (image.size() != num_features || __mean_vector.size() != num_features) {
         std::cerr << "Error: Image, mean vector, and PCA components size mismatch!\n";
         exit(1);
     }
@@ -39,12 +40,12 @@ void pcaProject(const std::vector<double>& image,
     std::vector<double> centered_image(num_features, 0.0);
 
     for (int i = 0; i < num_features; i++) {
-        centered_image[i] = image[i] - mean[i];
+        centered_image[i] = image[i] - __mean_vector[i];
     }
 
     for (int i = 0; i < num_components; i++) { 
         for (int j = 0; j < num_features; j++) { 
-            out[i] += pca_components[i][j] * centered_image[j];
+            out[i] += __pca_components[i][j] * centered_image[j];
         }
     }
 }
@@ -95,13 +96,24 @@ void crop(){
 
 }
 
-void invert(const std::vector<uint8_t>& image,
-            std::vector<uint8_t>& out) {
-    
-    out.assign(image.size(), 0);
+void darken_image(std::vector<uint8_t>& image,
+                  uint8_t threshold,
+                  float factor = 0.8f) {
+                      
+    for (int i = 0; i < image.size(); i++) {
+        if (image[i] < threshold) {
+            image[i] = static_cast<uint8_t>(image[i] * factor);
+        }
+    }
+}
 
+void invert_and_normalize(const std::vector<uint8_t>& image,
+            std::vector<double>& out) {
+    
+    out.assign(image.size(), 0.0);
+    
     for (int i = 0; i < image.size(); i++){
-        out[i] = 255 - image[i];
+        out[i] = static_cast<double>((255 - image[i])/255.0);
     }
 
 }
@@ -117,6 +129,7 @@ void threshold(const std::vector<uint8_t>& image,
     }
 }
 
+/*
 uint8_t computeThreshold(const std::vector<uint8_t>& image){
 
     std::vector<uint32_t> bins = std::vector<uint32_t>(256, 0);
@@ -156,31 +169,92 @@ uint8_t computeThreshold(const std::vector<uint8_t>& image){
 
     return static_cast<uint8_t>(minIndex);
 }
+*/
 
-void process_image(const std::vector<double>& image, 
-                  const std::vector<std::vector<double>>& pca_components, 
-                  const std::vector<double>& mean,
-                  std::vector<double>& out){
+void gaussian_blur(const std::vector<uint8_t>& image, 
+                   int width, 
+                   int height, 
+                   std::vector<uint8_t>& out){
+                       
+    out.assign(image.size(), 0.0);
+    
+    for (int y = 1; y < height - 1; y++){
+        for (int x = 1; x < width - 1; x++){
+            float sum = 0.0f;
+            
+            for (int ky = -1; ky <= 1; ky++){
+                for (int kx = -1; kx <= 1; kx++){
+                    int pixelX = x + kx;
+                    int pixelY = y + ky;
+                    int index = pixelY * width + pixelX;
+                    
+                    sum += image[index] * GAUSSIAN_KERNEL[ky + 1][kx +1];   
+                }
+                
+            }
+            
+            out[y * width + x] = static_cast<uint8_t>(sum);
+        }
+        
+    }
+    
+    for (int x = 0; x < width; x++){
+        out[x] = image[x];
+        out[(height - 1) * width + x] = image[(height - 1) * width + x];
+    }
+    for (int y = 0; y < height; y++){
+        out[y * width] = image[y*width];
+        out[y*width+(width-1)] = image[y*width+(width-1)];
+    }
+
+}
+
+void process_image(const std::vector<uint8_t>& image, 
+                   int width,
+                   int height, 
+                   std::vector<double>& out){
     
     //BEHOLD! The image processing pipeline!
 
     //Step 1: Crop the image (white border)
-    crop();
+    //crop();
 
     //Compute threshold
     //uint8_t threshold = computeThreshold();
-    uint8_t threshold = BLACK_THRESHOLD;
+    //uint8_t threshold = BLACK_THRESHOLD;
+
 
     //Step 2: Contrast boost
-    //threshold();
+    std::vector<uint8_t> thresholded_image;
+    threshold(image, BLACK_THRESHOLD, thresholded_image);
 
     //Step 3: Downsample the image
-    //downsample();
+    std::vector<uint8_t> downsampled_image;
+    downsampleInterArea(thresholded_image, width, height, DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, downsampled_image);
 
-    //Step 4: Invert the image
-    //invert();
+    //Step 5: Contrast boost again
+    threshold(downsampled_image, WHITE_THRESHOLD, thresholded_image);
+    
+    //Step 6: Apply a gaussian blur
+    std::vector<uint8_t> blurred_image;
+    gaussian_blur(thresholded_image, DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, blurred_image);
 
+    //Step 7: Darken the gaussian blur
+    darken_image(blurred_image, WHITE_THRESHOLD);
+    
+    /*
+    const char* output_filename = "data/test_cpp.jpg";
+    //write downsampled image to a jpg
+    int quality = 100;  // JPG quality
+
+    bool success = stbi_write_jpg(output_filename, 28, 28, 1, blurred_image.data(), quality);    
+    */
+    
+    //Step 8: Invert and normalize
+    std::vector<double> inverted_normalized;
+    invert_and_normalize(blurred_image, inverted_normalized);
+    
     //Step 3: Project to PCA space
-    pcaProject(image, pca_components, mean, out);
+    pcaProject(inverted_normalized, out);
 }
 

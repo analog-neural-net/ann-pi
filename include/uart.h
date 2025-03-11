@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <iostream>
 #include <cstdlib>
+#include <vector>
 
 // UART Base Address
 #define UART0_BASE  0xFE201000
@@ -72,9 +73,22 @@ void uart_send_string(const char* str) {
     }
 }
 
+void uart_receive_string() {
+    
+}
+
 char uart_receive_char() {
     while (uart_base[UART_FR / 4] & (1 << 4)) {} // wait for RX ready
     return uart_base[UART_DR / 4] & 0xFF;
 }
 
+void uart_send_pca_data(std::vector<int32_t> &pca_projection) {
+    
+    uart_send_string("ANN-E");
+    
+    for (int i = 0; i < pca_projection.size(); i++) {
+        uart_send_int32(pca_projection[i]);
+    } 
+     
+}
 #endif // UART_DRIVER_H

@@ -2,6 +2,7 @@
 #include <vector>
 #include <sstream>
 #include <fstream>
+#include <unistd.h>
 
 #include "image_process_pipeline.h"
 #include "gpio.h"
@@ -9,55 +10,12 @@
 #include "stb/stb_image.h"
 #include "stb/stb_image_write.h"
 
-// Function to load a CSV file into a 2D vector (Matrix)
-std::vector<std::vector<double>> loadMatrixCSV(const std::string& filename, int rows, int cols) {
-    std::ifstream file(filename);
-    std::vector<std::vector<double>> matrix(rows, std::vector<double>(cols, 0.0));
-
-    if (!file.is_open()) {
-        std::cerr << "Error: Unable to open file " << filename << std::endl;
-        exit(1);
-    }
-
-    std::string line;
-    for (int i = 0; i < rows; i++) {
-        getline(file, line);
-        std::stringstream lineStream(line);
-        std::string cell;
-        for (int j = 0; j < cols; j++) {
-            getline(lineStream, cell, ',');
-            matrix[i][j] = stod(cell);
-        }
-    }
-    file.close();
-    return matrix;
-}
-
-// Function to load a CSV file into a 1D vector (Column Vector)
-std::vector<double> loadVectorCSV(const std::string& filename, int size) {
-    std::ifstream file(filename);
-    std::vector<double> vec(size, 0.0);
-
-    if (!file.is_open()) {
-        std::cerr << "Error: Unable to open file " << filename << std::endl;
-        exit(1);
-    }
-
-    std::string line;
-    for (int i = 0; i < size; i++) {
-        getline(file, line);
-        vec[i] = stod(line);
-    }
-    file.close();
-    return vec;
-}
-
 int main() {
     gpio_init();
     uart_init();
     image_processing_init();
 
-    gpio_func_select(INPUT, 23);
+    gpio_func_select(INPUT, 24);
     gpio_func_select(ALT0, 14);
     gpio_func_select(ALT0, 15);
 
@@ -84,6 +42,7 @@ int main() {
     }
     */
 
+/*
     int width, height, channels;
     unsigned char* img = stbi_load("data/720p_test_8.jpg", &width, &height, &channels, 1);
 
@@ -111,7 +70,8 @@ int main() {
     //invert
     
     //project onto pca space
-
+    
+    uart_send_string("Hello World!")
 
     const char* output_filename = "data/downsampled_cpp.jpg";
     //write downsampled image to a jpg
@@ -124,5 +84,42 @@ int main() {
     //gpio_func_select(ALT3, 23); // Set GPIO pin 23 to alternate function 3
     //gpio_func_select(INPUT, 18); // Set GPIO pin 18 to input
 
-    return 0;
+*/
+/*
+    while(true){
+    int input = gpio_read(24);
+    if (input){
+    //printf("%d", gpio_read(24));
+    uart_send_string("Hello World!");
+    sleep(1);
+    
+    }
+    
+    }
+    while(true){}
+        return 0;
+*/
+    int width, height, channels;
+    unsigned char* img = stbi_load("data/720p_test_8.jpg", &width, &height, &channels, 1);
+    std::vector<uint8_t> image_data(img, img + (width * height));
+    stbi_image_free(img);
+    
+    std::vector<double> pca_coefficients;
+    
+    process_image(image_data, width, height, pca_coefficients);
+    
+    for (int i = 0; i < pca_coefficients.size(); i++){
+        printf("%lf\n", pca_coefficients[i]);
+    }
+    
+    std::vector<int32_t> pca_projection;
+    pca_projection.assign(pca_coefficients.size(), 0);
+    
+    for (int i = 0; i < pca_projection.size(); i++){
+        pca_projection[i] = static_cast<int32_t>(pca_coefficients[i] * 10000);
+    }
+    
+    uart_send_pca_data(pca_projection);
+    
+    while(true){}
 }

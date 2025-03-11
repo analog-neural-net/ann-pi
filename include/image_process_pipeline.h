@@ -2,7 +2,7 @@
 #define IMAGE_PROCESS_PIPELINE_H
 
 #include <iostream>
-#include <Eigen/Dense>
+//#include <Eigen/Dense>
 #include <vector>
 
 #define BLACK_THRESHOLD 40
@@ -17,16 +17,24 @@
 //     THRESHOLD_DOWN = 1,
 // }DIRECTION
 
-std::vector<std::vector<double>> __pca_components;
-std::vector<double> __mean_vector;
+extern std::vector<std::vector<double>> __pca_components;
+extern std::vector<double> __mean_vector;
+
+const float GAUSSIAN_KERNEL[3][3] = {
+  { 1/16.0, 2/16.0, 1/16.0 },
+  { 2/16.0, 4/16.0, 2/16.0 },
+  { 1/16.0, 2/16.0, 1/16.0 } 
+};
 
 void image_processing_init();
 
-void process_image(const std::vector<double>& image, 
-                  const std::vector<std::vector<double>>& pca_components, 
-                  const std::vector<double>& mean,
-                  std::vector<double>& out);
-
+void process_image(const std::vector<uint8_t>& image, 
+                   int width,
+                   int height,
+                   std::vector<double>& out);
+                   
+                   
+/*
 void downsampleInterArea(const std::vector<uint8_t>& image, 
                          int oldWidth, 
                          int oldHeight, 
@@ -37,5 +45,5 @@ void downsampleInterArea(const std::vector<uint8_t>& image,
 void threshold(const std::vector<uint8_t>& image,
                uint8_t threshold,
                std::vector<uint8_t>& out);
-
+*/
 #endif
