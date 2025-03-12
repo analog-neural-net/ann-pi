@@ -3,6 +3,8 @@
 #include <sstream>
 #include <fstream>
 #include <unistd.h>
+#include <sys/wait.h>
+#include <sys/types.h>
 
 #include "image_process_pipeline.h"
 #include "gpio.h"
@@ -99,27 +101,43 @@ int main() {
     while(true){}
         return 0;
 */
-    int width, height, channels;
-    unsigned char* img = stbi_load("data/720p_test_8.jpg", &width, &height, &channels, 1);
-    std::vector<uint8_t> image_data(img, img + (width * height));
-    stbi_image_free(img);
     
-    std::vector<double> pca_coefficients;
-    
-    process_image(image_data, width, height, pca_coefficients);
-    
-    for (int i = 0; i < pca_coefficients.size(); i++){
-        printf("%lf\n", pca_coefficients[i]);
+    while(true){
+        
+        int flag = gpio_read(24);
+        if(flag){
+            pid_t pid = fork();
+            
+            if (pid == 0) {
+                execlp("libcamera-still", "libcamera-still", "-o", "data/image.jpg", "--width", "1280", "--height", "720", "--immediate", (char*)NULL);
+                exit(1);
+            } else{
+                std::cerr << "Image capture started\n";
+                int status;
+                waitpid(pid, &status, 0);
+                std::cerr << "Image capture completed\n";
+                int width, height, channels;
+                unsigned char* img = stbi_load("data/image.jpg", &width, &height, &channels, 1);
+                std::vector<uint8_t> image_data(img, img + (width * height));
+                stbi_image_free(img);
+                
+                std::vector<double> pca_coefficients;
+                
+                process_image(image_data, width, height, pca_coefficients);
+                
+                for (int i = 0; i < pca_coefficients.size(); i++){
+                    printf("%lf\n", pca_coefficients[i]);
+                }
+                
+                std::vector<int32_t> pca_projection;
+                pca_projection.assign(pca_coefficients.size(), 0);
+                
+                for (int i = 0; i < pca_projection.size(); i++){
+                    pca_projection[i] = static_cast<int32_t>(pca_coefficients[i] * 10000);
+                }
+                
+                uart_send_pca_data(pca_projection);                
+            }
+        }
     }
-    
-    std::vector<int32_t> pca_projection;
-    pca_projection.assign(pca_coefficients.size(), 0);
-    
-    for (int i = 0; i < pca_projection.size(); i++){
-        pca_projection[i] = static_cast<int32_t>(pca_coefficients[i] * 10000);
-    }
-    
-    uart_send_pca_data(pca_projection);
-    
-    while(true){}
 }
