@@ -46,4 +46,7 @@ void threshold(const std::vector<uint8_t>& image,
                uint8_t threshold,
                std::vector<uint8_t>& out);
 */
+
+void pcaProject(const std::vector<double>& image, 
+                std::vector<double>& out);
 #endif

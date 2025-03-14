@@ -7,6 +7,7 @@
 #include <sys/types.h>
 
 #include "image_process_pipeline.h"
+#include "utilities.h"
 #include "gpio.h"
 #include "uart.h"
 #include "stb/stb_image.h"
@@ -18,8 +19,10 @@ int main() {
     image_processing_init();
 
     gpio_func_select(INPUT, 24);
-    gpio_func_select(ALT0, 14);
-    gpio_func_select(ALT0, 15);
+    gpio_func_select(ALT4, 12);
+    gpio_func_select(ALT4, 13);
+    
+    char buf[512];
 
     // README!!!!:
     // THE CROP FUNCTION HAS **NOT** BEEN IMPLEMENTED
@@ -27,6 +30,27 @@ int main() {
     // PARAMETERS IN THE execlp() CALL!!! AND TUNE IT
     // TO ISOLATE JUST THE WHITE PAPER!!!!!!!!!!!!!!!
     
+    uart_send_string("HELLO WORLD!");
+    
+    std::vector<double> test_image = loadVectorCSV("./data/test_image.csv", FEATURES);
+    std::vector<double> projection;
+    
+    pcaProject(test_image, projection);
+    
+    uart_receive_string(12, buf);
+    
+    std::cout << buf << "\n";
+
+    std::vector<int32_t> pca_projection;
+    pca_projection.assign(projection.size(), 0);
+    
+    for (int i = 0; i < pca_projection.size(); i++){    
+        pca_projection[i] = static_cast<int32_t>(projection[i] * 10000);
+    }
+    
+    uart_send_pca_data(pca_projection);
+    
+    /*
     while(true){
         
         int flag = gpio_read(24); // Push button
@@ -65,4 +89,5 @@ int main() {
             }
         }
     }
+    */
 }
