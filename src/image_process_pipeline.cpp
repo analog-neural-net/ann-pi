@@ -1,6 +1,7 @@
 #include "image_process_pipeline.h"
 #include "utilities.h"
 #include "stb/stb_image_write.h"
+#include "math.h"
 
 std::vector<std::vector<double>> __pca_components;
 std::vector<double> __mean_vector;
@@ -43,10 +44,24 @@ void pcaProject(const std::vector<uint8_t>& image,
         centered_image[i] = image[i] - __mean_vector[i];
     }
 
+    double max = 0;
+
     for (int i = 0; i < num_components; i++) { 
         for (int j = 0; j < num_features; j++) { 
             out[i] += __pca_components[i][j] * centered_image[j];
+            
+            if (fabs(out[i] > max){
+                max = fabs(out[i]);
+            }
         }
+    }
+    
+    if (max == 0){
+        return;
+    }
+    
+    for (int i = 0; i < num_components; i++){
+        out[i] = 2*(out[i]/max);
     }
 }
 
@@ -254,12 +269,22 @@ void process_image(const std::vector<uint8_t>& image,
     std::vector<uint8_t> inverted;
     invert(blurred_image, inverted);
     
+    std::vector<uint8_t> inverted_cropped;
+    
+    inverted_cropped.assign(FEATURES, 0.0);
+    
+    for (int i = 3; i < DOWNSAMPLE_SIZE-5; i++){
+        for (int j = 4; j < DOWNSAMPLE_SIZE-4; j++){
+            inverted_cropped[(i-3) + 20*(j-4)] = inverted[i + DOWNSAMPLE_SIZE*j];
+        }
+    } 
+    
     int quality = 100;  // JPG quality
 
-    bool success = stbi_write_jpg("data/pre_pca.jpg", 20, 20, 1, inverted.data(), quality);    
+    bool success = stbi_write_jpg("data/pre_pca.jpg", 20, 20, 1, inverted_cropped.data(), quality);    
     
     //Step 3: Project to PCA space
-    pcaProject(inverted, out);
+    pcaProject(inverted_cropped, out);
     
     
 }

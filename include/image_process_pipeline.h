@@ -8,9 +8,9 @@
 #define BLACK_THRESHOLD 40
 #define WHITE_THRESHOLD 200
 
-#define DOWNSAMPLE_SIZE 20
+#define DOWNSAMPLE_SIZE 28
 
-#define FEATURES 784
+#define FEATURES 400
 #define COMPONENTS 12
 // typedef enum{
 //     THRESHOLD_UP = 0,
