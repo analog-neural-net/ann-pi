@@ -24,7 +24,7 @@ void gemv(const std::vector<std::vector<double>>& matrix,
     }
 }
 
-void pcaProject(const std::vector<double>& image, 
+void pcaProject(const std::vector<uint8_t>& image, 
                 std::vector<double>& out) {
     
     int num_components = __pca_components.size();  
@@ -107,13 +107,13 @@ void darken_image(std::vector<uint8_t>& image,
     }
 }
 
-void invert_and_normalize(const std::vector<uint8_t>& image,
-            std::vector<double>& out) {
+void invert(const std::vector<uint8_t>& image,
+            std::vector<uint8_t>& out) {
     
     out.assign(image.size(), 0.0);
     
     for (int i = 0; i < image.size(); i++){
-        out[i] = static_cast<double>((255 - image[i])/255.0);
+        out[i] = 255 - image[i];
     }
 
 }
@@ -251,10 +251,16 @@ void process_image(const std::vector<uint8_t>& image,
     */
     
     //Step 8: Invert and normalize
-    std::vector<double> inverted_normalized;
-    invert_and_normalize(blurred_image, inverted_normalized);
+    std::vector<uint8_t> inverted;
+    invert(blurred_image, inverted);
+    
+    int quality = 100;  // JPG quality
+
+    bool success = stbi_write_jpg("data/pre_pca.jpg", 20, 20, 1, inverted.data(), quality);    
     
     //Step 3: Project to PCA space
-    pcaProject(inverted_normalized, out);
+    pcaProject(inverted, out);
+    
+    
 }
 

@@ -10,7 +10,8 @@
 #include <vector>
 
 // UART Base Address
-#define UART0_BASE  0xFE21F000
+#define UART0_BASE  0xFE201000
+#define UART3_OFFSET 0x600
 #define BLOCK_SIZE  4096
 
 // UART Register Offsets
@@ -38,10 +39,10 @@ void uart_init() {
         exit(1);
     }
 
+    uart_base = (volatile uint32_t*)((char*)uart_base + UART3_OFFSET);
+
     // Configure UART
     uart_base[UART_CR / 4] = 0;  
-    
-    std::cout << "UART_CR before: 0x" << std::hex << uart_base[UART_CR / 4] << std::endl;
     
     // this flushes the rx and tx fifo
     uart_base[UART_LCRH / 4] |= (1 << 4);
@@ -57,16 +58,15 @@ void uart_init() {
     // master enable
     uart_base[UART_CR / 4] = (1 << 0) | (1 << 8) | (1 << 9);
     
+    /*
     
     while (!(uart_base[UART_FR / 4] & (1 << 4))){
         volatile uint32_t dummy = uart_base[UART_DR / 4];
         (void)dummy;
         
         std::cout << "destroyed\n";
-    }    
-    std::cout << "UART_CR after: 0x" << std::hex << uart_base[UART_CR / 4] << std::endl;
-    
-    std::cout << "UART_LCRH: 0x" << std::hex << uart_base[UART_LCRH / 4] << std::endl;
+    } 
+    */   
 }
 
 void uart_send_char(char c) {
