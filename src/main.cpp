@@ -18,10 +18,12 @@ int main() {
     uart_init();
     image_processing_init();
 
+    gpio_func_select(OUTPUT, 16);
     gpio_func_select(INPUT, 24);
     gpio_func_select(ALT4, 4);
     gpio_func_select(ALT4, 5);
     
+    gpio_set(21);
     /*
     char buf[512];
 
@@ -52,9 +54,8 @@ int main() {
     while(1){
         std::cout << uart_receive_char();
     }
-
-    */
-
+*/
+/*
     int width, height, channels;
     unsigned char* img = stbi_load("data/720p_test_8.jpg", &width, &height, &channels, 1);
     std::vector<uint8_t> image_data(img, img + (width * height));
@@ -64,7 +65,13 @@ int main() {
     
     process_image(image_data, width, height, pca_coefficients);
     
-    /*
+    
+    for (int i = 0; i < pca_coefficients.size(); i++){
+        std::cout << pca_coefficients[i] << std::endl;
+    }
+    
+*/
+
     while(true){
         
         int flag = gpio_read(24); // Push button
@@ -72,7 +79,7 @@ int main() {
             pid_t pid = fork();
             
             if (pid == 0) {  // Camera child process
-                execlp("libcamera-still", "libcamera-still", "-o", "data/image.jpg", "--width", "1280", "--height", "720", "--immediate", (char*)NULL);
+                execlp("libcamera-still", "libcamera-still", "-o", "data/image.jpg", "--width", "1440", "--height", "1440", (char*)NULL);
                 exit(1);
             } else{
                 std::cerr << "Image capture started\n";
@@ -80,7 +87,7 @@ int main() {
                 waitpid(pid, &status, 0); // Waits for picture to be taken
                 std::cerr << "Image capture completed\n";
                 int width, height, channels;
-                unsigned char* img = stbi_load("data/image.jpg", &width, &height, &channels, 1);
+                unsigned char* img = stbi_load("data/720p_test_8.jpg", &width, &height, &channels, 1);
                 std::vector<uint8_t> image_data(img, img + (width * height));
                 stbi_image_free(img);
                 
@@ -99,9 +106,12 @@ int main() {
                     pca_projection[i] = static_cast<int32_t>(pca_coefficients[i] * 10000);
                 }
                 
-                uart_send_pca_data(pca_projection);                
+                uart_send_pca_data(pca_projection);    
+                while(1){
+                    std::cout << uart_receive_char();
+                }
+                            
             }
         }
     }
-    */
 }

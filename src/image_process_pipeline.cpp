@@ -50,11 +50,13 @@ void pcaProject(const std::vector<uint8_t>& image,
         for (int j = 0; j < num_features; j++) { 
             out[i] += __pca_components[i][j] * centered_image[j];
             
-            if (fabs(out[i] > max){
-                max = fabs(out[i]);
-            }
+        }
+        
+        if (fabs(out[i]) > max){
+            max = fabs(out[i]);
         }
     }
+    
     
     if (max == 0){
         return;
@@ -234,6 +236,11 @@ void process_image(const std::vector<uint8_t>& image,
     //Step 1: Crop the image (white border)
     //crop();
 
+
+    int quality = 100;  // JPG quality
+
+    bool success = stbi_write_jpg("data/step_1.jpg", width, height, 1, image.data(), quality);    
+
     //Compute threshold
     //uint8_t threshold = computeThreshold();
     //uint8_t threshold = BLACK_THRESHOLD;
@@ -243,19 +250,40 @@ void process_image(const std::vector<uint8_t>& image,
     std::vector<uint8_t> thresholded_image;
     threshold(image, BLACK_THRESHOLD, thresholded_image);
 
+    quality = 100;  // JPG quality
+
+    success = stbi_write_jpg("data/step_2.jpg", width, height, 1, thresholded_image.data(), quality);    
+
     //Step 3: Downsample the image
     std::vector<uint8_t> downsampled_image;
     downsampleInterArea(thresholded_image, width, height, DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, downsampled_image);
+    
+    quality = 100;  // JPG quality
+
+    success = stbi_write_jpg("data/step_3.jpg", DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, 1, downsampled_image.data(), quality);    
 
     //Step 5: Contrast boost again
     threshold(downsampled_image, WHITE_THRESHOLD, thresholded_image);
     
+    quality = 100;  // JPG quality
+
+    success = stbi_write_jpg("data/step_5.jpg", DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, 1, thresholded_image.data(), quality);    
+    
     //Step 6: Apply a gaussian blur
     std::vector<uint8_t> blurred_image;
     gaussian_blur(thresholded_image, DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, blurred_image);
+    
+    quality = 100;  // JPG quality
+
+    success = stbi_write_jpg("data/step_6.jpg", DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, 1, blurred_image.data(), quality);    
 
     //Step 7: Darken the gaussian blur
     darken_image(blurred_image, WHITE_THRESHOLD);
+    
+    
+    quality = 100;  // JPG quality
+
+    success = stbi_write_jpg("data/step_7.jpg", DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, 1, blurred_image.data(), quality);    
     
     /*
     const char* output_filename = "data/test_cpp.jpg";
@@ -279,10 +307,11 @@ void process_image(const std::vector<uint8_t>& image,
         }
     } 
     
-    int quality = 100;  // JPG quality
 
-    bool success = stbi_write_jpg("data/pre_pca.jpg", 20, 20, 1, inverted_cropped.data(), quality);    
-    
+    quality = 100;  // JPG quality
+
+    success = stbi_write_jpg("data/step_8.jpg", 20, 20, 1, inverted_cropped.data(), quality);    
+
     //Step 3: Project to PCA space
     pcaProject(inverted_cropped, out);
     
