@@ -9,6 +9,10 @@ std::vector<double> __mean_vector;
 void image_processing_init(){
     __pca_components = loadMatrixCSV("./data/pca_components.csv", COMPONENTS, FEATURES);
     __mean_vector = loadVectorCSV("./data/mean.csv", FEATURES);
+
+    std::cout << "Loaded PCA Components: " << __pca_components.size() << " x " 
+              << (__pca_components.empty() ? 0 : __pca_components[0].size()) << std::endl;
+    std::cout << "Loaded Mean Vector Size: " << __mean_vector.size() << std::endl;
 }
 
 void gemv(const std::vector<std::vector<double>>& matrix,
@@ -24,6 +28,79 @@ void gemv(const std::vector<std::vector<double>>& matrix,
         }
     }
 }
+
+void find_bounding_box(const std::vector<uint8_t>& image, int width, int height,
+                        int& min_x, int& max_x, int& min_y, int& max_y, uint8_t threshold) {
+    min_x = width, max_x = 0, min_y = height, max_y = 0;
+
+    int row_threshold = width / 30;  
+    int col_threshold = height / 30; 
+
+    // ignore noise near top/bottom edges
+    for (int y = 5; y < height - 5; y++) { 
+        int black_pixel_count = 0;
+        for (int x = 0; x < width; x++) {
+            if (image[y * width + x] < threshold) black_pixel_count++;
+        }
+        if (black_pixel_count > row_threshold) { 
+            if (y < min_y) min_y = y;
+            if (y > max_y) max_y = y;
+        }
+    }
+
+    // ignore noise near left/right edges
+    for (int x = 5; x < width - 5; x++) { 
+        int black_pixel_count = 0;
+        for (int y = 0; y < height; y++) {
+            if (image[y * width + x] < threshold) black_pixel_count++;
+        }
+        if (black_pixel_count > col_threshold) {
+            if (x < min_x) min_x = x;
+            if (x > max_x) max_x = x;
+        }
+    }
+
+    std::cout << "Filtered Bounding Box: (" << min_x << "," << min_y << ") to (" << max_x << "," << max_y << ")\n";
+}
+
+void crop_to_square(const std::vector<uint8_t>& image, int width, int height,
+                    std::vector<uint8_t>& cropped, int& new_size, uint8_t threshold) {
+    int min_x, max_x, min_y, max_y;
+    find_bounding_box(image, width, height, min_x, max_x, min_y, max_y, threshold);
+
+    int digit_width = max_x - min_x + 1;
+    int digit_height = max_y - min_y + 1;
+    new_size = (digit_width > digit_height) ? digit_width : digit_height; // square cropping logic
+
+    int center_x = (min_x + max_x) / 2;
+    int center_y = (min_y + max_y) / 2;
+    int half_size = new_size / 2;
+
+    int crop_x1 = center_x - half_size;
+    int crop_y1 = center_y - half_size;
+    int crop_x2 = crop_x1 + new_size - 1;
+    int crop_y2 = crop_y1 + new_size - 1;
+
+    // clamp
+    if (crop_x1 < 0) { crop_x2 -= crop_x1; crop_x1 = 0; }
+    if (crop_y1 < 0) { crop_y2 -= crop_y1; crop_y1 = 0; }
+    if (crop_x2 >= width) { crop_x1 -= (crop_x2 - width + 1); crop_x2 = width - 1; }
+    if (crop_y2 >= height) { crop_y1 -= (crop_y2 - height + 1); crop_y2 = height - 1; }
+
+    new_size = crop_x2 - crop_x1 + 1;
+    if (new_size > (crop_y2 - crop_y1 + 1)) new_size = crop_y2 - crop_y1 + 1;
+
+    std::cout << "Cropping to: (" << crop_x1 << "," << crop_y1 << ") to (" 
+              << crop_x2 << "," << crop_y2 << "), size: " << new_size << "x" << new_size << "\n";
+    cropped.assign(new_size * new_size, 255);
+
+    for (int y = crop_y1; y < crop_y2; y++) {
+        for (int x = crop_x1; x < crop_x2; x++) {
+            cropped[(y-crop_y1)*new_size + (x-crop_x1)] = image[y*width + x];
+        }
+    }
+}
+
 
 void pcaProject(const std::vector<uint8_t>& image, 
                 std::vector<double>& out) {
@@ -233,67 +310,51 @@ void process_image(const std::vector<uint8_t>& image,
     
     //BEHOLD! The image processing pipeline!
 
-    //Step 1: Crop the image (white border)
-    //crop();
+    //Step 1: Crop the image (white border)/smart crop (digit bounds)
+    std::vector<uint8_t> cropped_centered;
+    int new_size;
+    crop_to_square(image, width, height, cropped_centered, new_size, BLACK_THRESHOLD);
 
 
     int quality = 100;  // JPG quality
-
-    bool success = stbi_write_jpg("data/step_1.jpg", width, height, 1, image.data(), quality);    
-
-    //Compute threshold
-    //uint8_t threshold = computeThreshold();
-    //uint8_t threshold = BLACK_THRESHOLD;
+    bool success = stbi_write_jpg("data/step_1.jpg", new_size, new_size, 1, cropped_centered.data(), quality);    
 
 
     //Step 2: Contrast boost
     std::vector<uint8_t> thresholded_image;
-    threshold(image, BLACK_THRESHOLD, thresholded_image);
+    threshold(cropped_centered, BLACK_THRESHOLD, thresholded_image);
 
     quality = 100;  // JPG quality
-
-    success = stbi_write_jpg("data/step_2.jpg", width, height, 1, thresholded_image.data(), quality);    
+    success = stbi_write_jpg("data/step_2.jpg", new_size, new_size, 1, thresholded_image.data(), quality);    
 
     //Step 3: Downsample the image
     std::vector<uint8_t> downsampled_image;
-    downsampleInterArea(thresholded_image, width, height, DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, downsampled_image);
+    downsampleInterArea(thresholded_image, new_size, new_size, DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, downsampled_image);
     
     quality = 100;  // JPG quality
-
     success = stbi_write_jpg("data/step_3.jpg", DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, 1, downsampled_image.data(), quality);    
 
-    //Step 5: Contrast boost again
+    //Step 4: Contrast boost again
     threshold(downsampled_image, WHITE_THRESHOLD, thresholded_image);
     
     quality = 100;  // JPG quality
 
-    success = stbi_write_jpg("data/step_5.jpg", DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, 1, thresholded_image.data(), quality);    
+    success = stbi_write_jpg("data/step_4.jpg", DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, 1, thresholded_image.data(), quality);    
     
-    //Step 6: Apply a gaussian blur
+    //Step 5: Apply a gaussian blur
     std::vector<uint8_t> blurred_image;
     gaussian_blur(thresholded_image, DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, blurred_image);
     
     quality = 100;  // JPG quality
+    success = stbi_write_jpg("data/step_5.jpg", DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, 1, blurred_image.data(), quality);    
 
-    success = stbi_write_jpg("data/step_6.jpg", DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, 1, blurred_image.data(), quality);    
-
-    //Step 7: Darken the gaussian blur
+    //Step 6: Darken the gaussian blur
     darken_image(blurred_image, WHITE_THRESHOLD);
     
-    
     quality = 100;  // JPG quality
+    success = stbi_write_jpg("data/step_6.jpg", DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, 1, blurred_image.data(), quality);    
 
-    success = stbi_write_jpg("data/step_7.jpg", DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, 1, blurred_image.data(), quality);    
-    
-    /*
-    const char* output_filename = "data/test_cpp.jpg";
-    //write downsampled image to a jpg
-    int quality = 100;  // JPG quality
-
-    bool success = stbi_write_jpg(output_filename, 28, 28, 1, blurred_image.data(), quality);    
-    */
-    
-    //Step 8: Invert and normalize
+    //Step 7: Invert and crop to 20x20 (will most likely be reverted to 28x28)
     std::vector<uint8_t> inverted;
     invert(blurred_image, inverted);
     
@@ -307,14 +368,11 @@ void process_image(const std::vector<uint8_t>& image,
         }
     } 
     
-
     quality = 100;  // JPG quality
+    success = stbi_write_jpg("data/step_7.jpg", 20, 20, 1, inverted_cropped.data(), quality);   
 
-    success = stbi_write_jpg("data/step_8.jpg", 20, 20, 1, inverted_cropped.data(), quality);    
-
-    //Step 3: Project to PCA space
+    //Step 8: Project to PCA space
     pcaProject(inverted_cropped, out);
-    
     
 }
 
