@@ -5,7 +5,7 @@
 //#include <Eigen/Dense>
 #include <vector>
 
-#define BLACK_THRESHOLD 40
+#define BLACK_THRESHOLD 110
 #define WHITE_THRESHOLD 200
 
 #define DOWNSAMPLE_SIZE 28

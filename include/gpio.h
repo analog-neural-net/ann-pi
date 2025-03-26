@@ -47,6 +47,12 @@ typedef enum {
     ALT3   = 7
 } FUNCTION;
 
+typedef enum {
+    NO_RESISTOR = 0,
+    PULL_UP     = 1,
+    PULL_DOWN   = 2
+} RESISTOR_CONTROL;
+
 volatile uint32_t *gpio_base; 
 
 // Initialize GPIO by memory mapping GPIO registers to process address space
@@ -89,6 +95,17 @@ void gpio_clear(uint8_t pin) {
 // Read GPIO pin level
 uint8_t gpio_read(uint8_t pin) {
     return (*(gpio_base + (GPLEV0_OFFSET / 4) + (pin / 32)) & (1 << (pin % 32))) ? 1 : 0;
+}
+
+void gpio_pull_resistor(RESISTOR_CONTROL pull_type, uint8_t pin) {
+    
+    uint8_t reg_num = pin / 16;
+    uint8_t pin_pos = (pin % 16) * 2;
+    
+    volatile uint32_t *gpresc = gpio_base + (GPIO_PUP_PDN_CNTRL_REG0_OFFSET / 4) + reg_num;
+    
+    *gpresc &= ~(3 << pin_pos);
+    *gpresc |= (pull_type << pin_pos);
 }
 
 #endif

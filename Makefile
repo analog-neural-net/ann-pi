@@ -1,6 +1,8 @@
 # Compiler
 CXX = g++
-CXXFLAGS = -std=c++17 -Wall -Iinclude -Iexternal -Iexternal/stb
+CXXFLAGS = -std=c++17 -Wall -Iinclude -Iexternal -Iexternal/stb -I/usr/include/ws2811 -I/usr/include/libcamera
+
+LDFLAGS = -L/usr/lib -lws2811 -lcamera -lcamera-base
 
 # Directories
 SRC_DIR = src
@@ -19,7 +21,7 @@ all: $(TARGET)
 # Build the executable
 $(TARGET): $(OBJS)
 	@mkdir -p $(BUILD_DIR)
-	$(CXX) $(CXXFLAGS) $(OBJS) -o $(TARGET)
+	$(CXX) $(OBJS) $(LDFLAGS) -o $(TARGET)
 
 # Compile source files
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp

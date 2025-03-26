@@ -1,3 +1,5 @@
+
+#include <thread>
 #include <iostream>
 #include <vector>
 #include <sstream>
@@ -10,108 +12,51 @@
 #include "utilities.h"
 #include "gpio.h"
 #include "uart.h"
+#include "led.h"
+#include "camera.h"
 #include "stb/stb_image.h"
 #include "stb/stb_image_write.h"
 
 int main() {
+    // Initialize hardware and image processing pipeline
     gpio_init();
     uart_init();
     image_processing_init();
 
     gpio_func_select(OUTPUT, 16);
-    gpio_func_select(INPUT, 24);
+    gpio_func_select(INPUT, 27);
     gpio_func_select(ALT4, 4);
     gpio_func_select(ALT4, 5);
     
+    gpio_pull_resistor(PULL_UP, 27);
     gpio_set(21);
-    /*
-    char buf[512];
-
-    // README!!!!:
-    // THE CROP FUNCTION HAS **NOT** BEEN IMPLEMENTED
-    // FOR THE TIME BEING CHANGE THE WIDTH AND HEIGHT 
-    // PARAMETERS IN THE execlp() CALL!!! AND TUNE IT
-    // TO ISOLATE JUST THE WHITE PAPER!!!!!!!!!!!!!!!
+    setup_ws2811();
+    solidColor(COLOR_WHITE);
     
-    std::vector<double> test_image = loadVectorCSV("./data/test_image.csv", FEATURES);
-    std::vector<double> projection;
-    
-    pcaProject(test_image, projection);
-    //uart_receive_string(12, buf);
-    
-    //std::cout << buf << "\n";
-    //uart_send_string("HELLO WORLD!");
-    std::vector<int32_t> pca_projection;
-    pca_projection.assign(projection.size(), 0);
-        
-    for (int i = 0; i < pca_projection.size(); i++){    
-        pca_projection[i] = static_cast<int32_t>(projection[i] * 10000);
-        std::cout << projection[i] << " ";
-    }
-    std::cout << std::endl;
-    uart_send_pca_data(pca_projection);
-    
-    while(1){
-        std::cout << uart_receive_char();
-    }
-*/
-/*
-    int width, height, channels;
-    unsigned char* img = stbi_load("data/720p_test_8.jpg", &width, &height, &channels, 1);
-    std::vector<uint8_t> image_data(img, img + (width * height));
-    stbi_image_free(img);
-    
-    std::vector<double> pca_coefficients;
-    
-    process_image(image_data, width, height, pca_coefficients);
-    
-    
-    for (int i = 0; i < pca_coefficients.size(); i++){
-        std::cout << pca_coefficients[i] << std::endl;
+    CameraContext ctx;
+    if (!init_camera(ctx, 1440, 1440)){
+        std::cerr << "Camera init failed!!" << std::endl;
     }
     
-*/
-
-    while(true){
-        
-        int flag = gpio_read(24); // Push button
-        if(flag){
-            pid_t pid = fork();
+    std::vector<uint8_t> image_data;
+    while(true) {
+        int flag = gpio_read(27); // Check the push button
+        if(!flag) {
+            uart_send_string("ANN-E");
+            printf("image sent\n");
+            /*
+            std::cerr << "Image capture started\n";
+            capture_grayscale_image(ctx, image_data);
+            std::cerr << "Image capture complete\n";
             
-            if (pid == 0) {  // Camera child process
-                execlp("libcamera-still", "libcamera-still", "-o", "data/image.jpg", "--width", "1440", "--height", "1440", (char*)NULL);
-                exit(1);
-            } else{
-                std::cerr << "Image capture started\n";
-                int status;
-                waitpid(pid, &status, 0); // Waits for picture to be taken
-                std::cerr << "Image capture completed\n";
-                int width, height, channels;
-                unsigned char* img = stbi_load("data/720p_test_8.jpg", &width, &height, &channels, 1);
-                std::vector<uint8_t> image_data(img, img + (width * height));
-                stbi_image_free(img);
-                
-                std::vector<double> pca_coefficients;
-                
-                process_image(image_data, width, height, pca_coefficients);
-                
-                for (int i = 0; i < pca_coefficients.size(); i++){
-                    printf("%lf\n", pca_coefficients[i]);
-                }
-                
-                std::vector<int32_t> pca_projection;
-                pca_projection.assign(pca_coefficients.size(), 0);
-                
-                for (int i = 0; i < pca_projection.size(); i++){
-                    pca_projection[i] = static_cast<int32_t>(pca_coefficients[i] * 10000);
-                }
-                
-                uart_send_pca_data(pca_projection);    
-                while(1){
-                    std::cout << uart_receive_char();
-                }
-                            
-            }
+            // Optionally, save the image locally for debugging
+            stbi_write_jpg("data/image.jpg", 1440, 1440, 1, image_data.data(), 100);
+            std::cout << "1";
+            */
+            // Debounce delay (adjust as needed)
+            usleep(500000); // 500ms
         }
     }
+
+    return 0;
 }

@@ -1,0 +1,1 @@
+sudo ./build/main.exe | python3 ./model/transmitter.py

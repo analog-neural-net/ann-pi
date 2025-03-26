@@ -10,9 +10,9 @@ void image_processing_init(){
     __pca_components = loadMatrixCSV("./data/pca_components.csv", COMPONENTS, FEATURES);
     __mean_vector = loadVectorCSV("./data/mean.csv", FEATURES);
 
-    std::cout << "Loaded PCA Components: " << __pca_components.size() << " x " 
+    std::cerr << "Loaded PCA Components: " << __pca_components.size() << " x " 
               << (__pca_components.empty() ? 0 : __pca_components[0].size()) << std::endl;
-    std::cout << "Loaded Mean Vector Size: " << __mean_vector.size() << std::endl;
+    std::cerr << "Loaded Mean Vector Size: " << __mean_vector.size() << std::endl;
 }
 
 void gemv(const std::vector<std::vector<double>>& matrix,
@@ -33,11 +33,11 @@ void find_bounding_box(const std::vector<uint8_t>& image, int width, int height,
                         int& min_x, int& max_x, int& min_y, int& max_y, uint8_t threshold) {
     min_x = width, max_x = 0, min_y = height, max_y = 0;
 
-    int row_threshold = width / 30;  
-    int col_threshold = height / 30; 
+    int row_threshold = 30;  
+    int col_threshold = 30; 
 
     // ignore noise near top/bottom edges
-    for (int y = 5; y < height - 5; y++) { 
+    for (int y = 100; y < height - 100; y++) { 
         int black_pixel_count = 0;
         for (int x = 0; x < width; x++) {
             if (image[y * width + x] < threshold) black_pixel_count++;
@@ -49,7 +49,7 @@ void find_bounding_box(const std::vector<uint8_t>& image, int width, int height,
     }
 
     // ignore noise near left/right edges
-    for (int x = 5; x < width - 5; x++) { 
+    for (int x = 100; x < width - 100; x++) { 
         int black_pixel_count = 0;
         for (int y = 0; y < height; y++) {
             if (image[y * width + x] < threshold) black_pixel_count++;
@@ -60,7 +60,7 @@ void find_bounding_box(const std::vector<uint8_t>& image, int width, int height,
         }
     }
 
-    std::cout << "Filtered Bounding Box: (" << min_x << "," << min_y << ") to (" << max_x << "," << max_y << ")\n";
+    std::cerr << "Filtered Bounding Box: (" << min_x << "," << min_y << ") to (" << max_x << "," << max_y << ")\n";
 }
 
 void crop_to_square(const std::vector<uint8_t>& image, int width, int height,
@@ -90,7 +90,7 @@ void crop_to_square(const std::vector<uint8_t>& image, int width, int height,
     new_size = crop_x2 - crop_x1 + 1;
     if (new_size > (crop_y2 - crop_y1 + 1)) new_size = crop_y2 - crop_y1 + 1;
 
-    std::cout << "Cropping to: (" << crop_x1 << "," << crop_y1 << ") to (" 
+    std::cerr << "Cropping to: (" << crop_x1 << "," << crop_y1 << ") to (" 
               << crop_x2 << "," << crop_y2 << "), size: " << new_size << "x" << new_size << "\n";
     cropped.assign(new_size * new_size, 255);
 
