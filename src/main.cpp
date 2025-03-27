@@ -38,24 +38,22 @@ int main() {
         std::cerr << "Camera init failed!!" << std::endl;
     }
     
+    int flag_buf = 1;
+    
     std::vector<uint8_t> image_data;
     while(true) {
         int flag = gpio_read(27); // Check the push button
-        if(!flag) {
-            uart_send_string("ANN-E");
-            printf("image sent\n");
-            /*
+        if(!flag && flag_buf) {
+
             std::cerr << "Image capture started\n";
             capture_grayscale_image(ctx, image_data);
             std::cerr << "Image capture complete\n";
             
-            // Optionally, save the image locally for debugging
             stbi_write_jpg("data/image.jpg", 1440, 1440, 1, image_data.data(), 100);
-            std::cout << "1";
-            */
-            // Debounce delay (adjust as needed)
-            usleep(500000); // 500ms
+            std::cout << "1" << std::flush;
         }
+        flag_buf = flag;
+        usleep(10000); // 10ms
     }
 
     return 0;

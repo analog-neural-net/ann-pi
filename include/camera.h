@@ -24,6 +24,8 @@ struct CameraContext {
     const std::vector<std::unique_ptr<libcamera::FrameBuffer>> *buffers;
     int width;
     int height;
+    bool isStreaming = false;
+    size_t next_buffer_index = 0;
 };
 
 bool init_camera(CameraContext &ctx, int width = 640, int height = 480) {
@@ -49,7 +51,7 @@ bool init_camera(CameraContext &ctx, int width = 640, int height = 480) {
     ctx.config_ptr = ctx.camera->generateConfiguration({ StreamRole::StillCapture });
     ctx.config = ctx.config_ptr.get();
     auto &cfg = ctx.config->at(0);
-    cfg.pixelFormat = formats::YUV420; // Arducam IMX519 does not support R8
+    cfg.pixelFormat = formats::YUV420;
     cfg.size.width = width;
     cfg.size.height = height;
     ctx.width = width;
@@ -70,6 +72,7 @@ bool init_camera(CameraContext &ctx, int width = 640, int height = 480) {
     }
 
     ctx.buffers = &ctx.allocator->buffers(ctx.stream);
+
     return true;
 }
 
@@ -85,56 +88,81 @@ void *map_framebuffer(libcamera::FrameBuffer *fb) {
 bool capture_grayscale_image(CameraContext &ctx, std::vector<uint8_t> &image_out) {
     using namespace libcamera;
 
+    if (ctx.camera->start() < 0) {
+        std::cerr << "Failed to start camera\n";
+        return false;
+    }
+
+    FrameBuffer *fb = ctx.buffers->at(ctx.next_buffer_index % ctx.buffers->size()).get();
+    ctx.next_buffer_index++;
+
     std::unique_ptr<Request> request = ctx.camera->createRequest();
     if (!request) {
         std::cerr << "Failed to create request\n";
+        ctx.camera->stop();
         return false;
     }
 
-    FrameBuffer *fb = ctx.buffers->at(0).get();
     if (request->addBuffer(ctx.stream, fb) < 0) {
-        std::cerr << "Failed to add buffer to request\n";
-        return false;
-    }
-
-    if (ctx.camera->start() < 0) {
-        std::cerr << "Failed to start camera.\n";
+        std::cerr << "Failed to attach buffer to request\n";
+        ctx.camera->stop();
         return false;
     }
 
     if (ctx.camera->queueRequest(request.get()) < 0) {
-        std::cerr << "Failed to queue request.\n";
+        std::cerr << "Failed to queue request\n";
+        ctx.camera->stop();
         return false;
     }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(300));
-    ctx.camera->stop();
+    while (request->status() != Request::RequestComplete) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
+    auto buffer_map = request->buffers();
+    auto it = buffer_map.find(ctx.stream);
+    if (it == buffer_map.end()) {
+        std::cerr << "Failed to get buffer from request\n";
+        ctx.camera->stop();
+        return false;
+    }
+    fb = it->second;
 
     const FrameBuffer::Plane &plane = fb->planes()[0];
     int fd = plane.fd.get();
     void *raw = mmap(nullptr, plane.length, PROT_READ, MAP_SHARED, fd, 0);
     if (raw == MAP_FAILED) {
         std::cerr << "Failed to map framebuffer.\n";
+        ctx.camera->stop();
         return false;
     }
 
     size_t stride = ctx.config->at(0).stride;
     size_t height = ctx.height;
-
     image_out.resize(ctx.width * height);
 
     uint8_t *src = static_cast<uint8_t *>(raw);
     uint8_t *dst = image_out.data();
 
-    for (int y = 0; y < height; ++y) {
+    for (size_t y = 0; y < height; ++y) {
         std::memcpy(dst + y * ctx.width, src + y * stride, ctx.width);
     }
 
     munmap(raw, plane.length);
+
+    ctx.camera->stop();
     return true;
 }
 
+void stop_camera_stream(CameraContext &ctx) {
+    if (ctx.isStreaming) {
+        ctx.camera->stop();
+        ctx.isStreaming = false;
+    }
+}
+
 void cleanup_camera(CameraContext &ctx) {
+    stop_camera_stream(ctx);
     if (ctx.camera)
         ctx.camera->release();
     ctx.allocator.reset();
