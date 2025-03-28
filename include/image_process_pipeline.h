@@ -4,13 +4,14 @@
 #include <iostream>
 //#include <Eigen/Dense>
 #include <vector>
+#include <cmath>
 
 #define BLACK_THRESHOLD 110
 #define WHITE_THRESHOLD 200
 
-#define DOWNSAMPLE_SIZE 28
+#define DOWNSAMPLE_SIZE 24
 
-#define FEATURES 400
+#define FEATURES 576
 #define COMPONENTS 12
 // typedef enum{
 //     THRESHOLD_UP = 0,

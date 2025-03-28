@@ -1,6 +1,6 @@
 # Compiler
 CXX = g++
-CXXFLAGS = -std=c++17 -Wall -Iinclude -Iexternal -Iexternal/stb -I/usr/include/ws2811 -I/usr/include/libcamera
+CXXFLAGS = -std=c++17 -Wall -Iinclude -Iexternal -Iexternal/stb -I/usr/include/ws2811 -I/usr/include/libcamera -O3 -march=native -ffast-math
 
 LDFLAGS = -L/usr/lib -lws2811 -lcamera -lcamera-base
 

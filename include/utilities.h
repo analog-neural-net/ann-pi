@@ -12,4 +12,6 @@ std::vector<std::vector<double>> loadMatrixCSV(const std::string& filename, int 
 // Function to load a CSV file into a 1D vector (Column Vector)
 std::vector<double> loadVectorCSV(const std::string& filename, int size);
 
+void writeVectorToCSV(const std::string& filename, const std::vector<double>& data);
+
 #endif

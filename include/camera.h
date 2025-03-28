@@ -26,9 +26,10 @@ struct CameraContext {
     int height;
     bool isStreaming = false;
     size_t next_buffer_index = 0;
+    float manual_focus = -1.0f;
 };
 
-bool init_camera(CameraContext &ctx, int width = 640, int height = 480) {
+bool init_camera(CameraContext &ctx, int width = 640, int height = 480, float manual_focus = -1.0f) {
     using namespace libcamera;
 
     static CameraManager *manager = new CameraManager();
@@ -56,6 +57,7 @@ bool init_camera(CameraContext &ctx, int width = 640, int height = 480) {
     cfg.size.height = height;
     ctx.width = width;
     ctx.height = height;
+    ctx.manual_focus = manual_focus;
     ctx.config->validate();
 
     if (ctx.camera->configure(ctx.config) < 0) {
@@ -88,7 +90,13 @@ void *map_framebuffer(libcamera::FrameBuffer *fb) {
 bool capture_grayscale_image(CameraContext &ctx, std::vector<uint8_t> &image_out) {
     using namespace libcamera;
 
-    if (ctx.camera->start() < 0) {
+    ControlList controls = ctx.camera->controls();
+    if (ctx.manual_focus >= 0.0f) {
+        controls.set(controls::AfMode, controls::AfModeManual);
+        controls.set(controls::LensPosition, ctx.manual_focus);
+    }
+
+    if (ctx.camera->start(&controls) < 0) {
         std::cerr << "Failed to start camera\n";
         return false;
     }

@@ -40,3 +40,19 @@ std::vector<double> loadVectorCSV(const std::string& filename, int size) {
     file.close();
     return vec;
 }
+
+void writeVectorToCSV(const std::string& filename, const std::vector<double>& data) {
+    std::ofstream file(filename);
+
+    if (!file.is_open()) {
+        std::cerr << "Failed to open file " << filename << "\n";
+        return;
+    }
+
+    for (double value : data) {
+        file << value << "\n";  // Each value on its own line (i.e., one column)
+    }
+
+    file.close();
+    std::cerr << "Vector written as column to " << filename << "\n";
+}

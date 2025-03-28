@@ -29,6 +29,16 @@ void gemv(const std::vector<std::vector<double>>& matrix,
     }
 }
 
+void rotate_image(const std::vector<uint8_t>& image,
+                  std::vector<uint8_t>& out){
+                      
+    out.assign(image.size(), 0);
+    
+    for (int i = image.size(), j = 0; i >= 0; i--, j++){
+        out[j] = image[i];
+    }
+}
+
 void find_bounding_box(const std::vector<uint8_t>& image, int width, int height,
                         int& min_x, int& max_x, int& min_y, int& max_y, uint8_t threshold) {
     min_x = width, max_x = 0, min_y = height, max_y = 0;
@@ -60,7 +70,44 @@ void find_bounding_box(const std::vector<uint8_t>& image, int width, int height,
         }
     }
 
-    std::cerr << "Filtered Bounding Box: (" << min_x << "," << min_y << ") to (" << max_x << "," << max_y << ")\n";
+    //std::cerr << "Filtered Bounding Box: (" << min_x << "," << min_y << ") to (" << max_x << "," << max_y << ")\n";
+}
+
+void add_circular_brightness(const std::vector<uint8_t>& image,
+                             int width,
+                             int height,
+                             std::vector<uint8_t>& out,
+                             double adjustment_factor = 1.2,
+                             double gamma = 8.0) {
+    out.assign(image.size(), 0);
+
+    int cx = width / 2;
+    int cy = height / 2;
+
+    std::vector<float> dist_map(width * height, 0.0f);
+    float max_dist_sq = 0.0f;
+
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            int dx = x - cx;
+            int dy = y - cy;
+            float dist_sq = static_cast<float>(dx * dx + dy * dy);
+            dist_map[y * width + x] = dist_sq;
+            if (dist_sq > max_dist_sq) {
+                max_dist_sq = dist_sq;
+            }
+        }
+    }
+
+
+    for (int i = 0; i < width * height; ++i) {
+        float normalized = dist_map[i] / max_dist_sq; 
+        float edge_boost = std::pow(normalized, gamma); 
+        float factor = 1.0f + static_cast<float>(adjustment_factor) * edge_boost;
+
+        float adjusted = image[i] * factor;
+        out[i] = static_cast<uint8_t>(std::min(255.0f, std::max(0.0f, adjusted)));
+    }
 }
 
 void crop_to_square(const std::vector<uint8_t>& image, int width, int height,
@@ -90,8 +137,10 @@ void crop_to_square(const std::vector<uint8_t>& image, int width, int height,
     new_size = crop_x2 - crop_x1 + 1;
     if (new_size > (crop_y2 - crop_y1 + 1)) new_size = crop_y2 - crop_y1 + 1;
 
+    /*
     std::cerr << "Cropping to: (" << crop_x1 << "," << crop_y1 << ") to (" 
               << crop_x2 << "," << crop_y2 << "), size: " << new_size << "x" << new_size << "\n";
+    */
     cropped.assign(new_size * new_size, 255);
 
     for (int y = crop_y1; y < crop_y2; y++) {
@@ -116,13 +165,15 @@ void pcaProject(const std::vector<uint8_t>& image,
     }
 
     std::vector<double> centered_image(num_features, 0.0);
-
+    
     for (int i = 0; i < num_features; i++) {
-        centered_image[i] = image[i] - __mean_vector[i];
+        centered_image[i] = image[i]/255.0 - __mean_vector[i];
     }
 
     double max = 0;
 
+    //std::cerr << "After projection: \n";
+    
     for (int i = 0; i < num_components; i++) { 
         for (int j = 0; j < num_features; j++) { 
             out[i] += __pca_components[i][j] * centered_image[j];
@@ -134,14 +185,27 @@ void pcaProject(const std::vector<uint8_t>& image,
         }
     }
     
-    
+    //std::cerr << "=======================================\n";
     if (max == 0){
         return;
     }
     
+    //std::cerr << "After normalization: \n";
+    
     for (int i = 0; i < num_components; i++){
-        out[i] = 2*(out[i]/max);
+        out[i] = 0.625*(out[i]/max);
     }
+    //std::cerr << "=======================================\n";
+    
+    int levels = 4096;
+    double scale = (2.0*2.75) / ((double) levels);
+    
+    //std::cerr << "After quantization: \n";
+    
+    for (int i = 0; i < num_components; i++){
+        out[i] = round(out[i]/scale) * scale;
+    }
+    //std::cerr << "=======================================\n";
 }
 
 void downsampleInterArea(const std::vector<uint8_t>& image, 
@@ -186,8 +250,22 @@ void downsample(){
 
 }
 
-void crop(){
+void crop(const std::vector<uint8_t>& image, 
+          int input_width, int input_height,
+          int crop_width, int crop_height, 
+          std::vector<uint8_t>& out) {
+    int start_x = (input_width - crop_width) / 2;
+    int start_y = (input_height - crop_height) / 2;
 
+    out.assign(crop_width*crop_height, 0);
+    
+    for (int y = 0; y < crop_height; ++y) {
+        for (int x = 0; x < crop_width; ++x) {
+            out[y * crop_width + x] = image[(start_y + y) * input_width + (start_x + x)];
+            //std::cerr << (start_y + y) * input_width + (start_x + x) << std::endl;
+            //exit(1);
+        }
+    }
 }
 
 void darken_image(std::vector<uint8_t>& image,
@@ -313,23 +391,38 @@ void process_image(const std::vector<uint8_t>& image,
     //Step 1: Crop the image (white border)/smart crop (digit bounds)
     std::vector<uint8_t> cropped_centered;
     int new_size;
-    crop_to_square(image, width, height, cropped_centered, new_size, BLACK_THRESHOLD);
-
-
+    //crop_to_square(image, width, height, cropped_centered, new_size, BLACK_THRESHOLD);
+    
+    rotate_image(image, cropped_centered);
+    
     int quality = 100;  // JPG quality
-    bool success = stbi_write_jpg("data/step_1.jpg", new_size, new_size, 1, cropped_centered.data(), quality);    
+    bool success = stbi_write_jpg("data/step_1.jpg", width, height, 1, cropped_centered.data(), quality);    
 
+
+    std::vector<uint8_t> center_crop;
+    
+    //crop(cropped_centered, width, height, 1000, 1000, center_crop);
+    add_circular_brightness(cropped_centered, width, height, center_crop, 2.5, 3.5);
+    success = stbi_write_jpg("data/step_1.5.jpg", width, height, 1, center_crop.data(), quality);    
+    
 
     //Step 2: Contrast boost
     std::vector<uint8_t> thresholded_image;
-    threshold(cropped_centered, BLACK_THRESHOLD, thresholded_image);
+    threshold(center_crop, BLACK_THRESHOLD, thresholded_image);
+    
+    //width = 1000; height = 1000;
 
     quality = 100;  // JPG quality
-    success = stbi_write_jpg("data/step_2.jpg", new_size, new_size, 1, thresholded_image.data(), quality);    
+    success = stbi_write_jpg("data/step_2.jpg", width, height, 1, thresholded_image.data(), quality);    
+    
+    std::vector<uint8_t> digit_bound;
+    crop_to_square(thresholded_image, width, height, digit_bound, new_size, BLACK_THRESHOLD);
+    
+    success = stbi_write_jpg("data/step_2.5.jpg", new_size, new_size, 1, digit_bound.data(), quality);  
 
     //Step 3: Downsample the image
     std::vector<uint8_t> downsampled_image;
-    downsampleInterArea(thresholded_image, new_size, new_size, DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, downsampled_image);
+    downsampleInterArea(digit_bound, new_size, new_size, DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, downsampled_image);
     
     quality = 100;  // JPG quality
     success = stbi_write_jpg("data/step_3.jpg", DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, 1, downsampled_image.data(), quality);    
@@ -354,25 +447,15 @@ void process_image(const std::vector<uint8_t>& image,
     quality = 100;  // JPG quality
     success = stbi_write_jpg("data/step_6.jpg", DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, 1, blurred_image.data(), quality);    
 
-    //Step 7: Invert and crop to 20x20 (will most likely be reverted to 28x28)
+    //Step 7: Invert 
     std::vector<uint8_t> inverted;
     invert(blurred_image, inverted);
     
-    std::vector<uint8_t> inverted_cropped;
-    
-    inverted_cropped.assign(FEATURES, 0.0);
-    
-    for (int i = 3; i < DOWNSAMPLE_SIZE-5; i++){
-        for (int j = 4; j < DOWNSAMPLE_SIZE-4; j++){
-            inverted_cropped[(i-3) + 20*(j-4)] = inverted[i + DOWNSAMPLE_SIZE*j];
-        }
-    } 
-    
     quality = 100;  // JPG quality
-    success = stbi_write_jpg("data/step_7.jpg", 20, 20, 1, inverted_cropped.data(), quality);   
+    success = stbi_write_jpg("data/step_7.jpg", 24, 24, 1, inverted.data(), quality);   
 
     //Step 8: Project to PCA space
-    pcaProject(inverted_cropped, out);
+    pcaProject(inverted, out);
     
 }
 
