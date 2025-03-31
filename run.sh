@@ -2,19 +2,23 @@
 
 FIFO_PATH="/tmp/cpp_to_py_fifo"
 
-# Step 1: Make sure FIFO exists
 if [[ ! -p "$FIFO_PATH" ]]; then
-    echo "FIFO not found. Creating it..."
+    echo "Creating FIFO at $FIFO_PATH..."
     mkfifo "$FIFO_PATH"
 else
     echo "✅ FIFO already exists."
-fi
+fi 
 
-# Step 2: Start the Python transmitter in the background
-echo "Starting server..."
-# python3 ./model/transmitter.py & 
-# PYTHON_PID=$!
+echo "Starting Python server..."
+python3 ./model/transmitter.py &
+PYTHON_PID=$!
 
-# Step 3: Run the C++ sender
-echo "Running program"
-sudo ./build/main.exe   
+echo "Starting C++ daemon..."
+sudo ./build/main.exe &     # Replace with actual binary name
+CPP_PID=$!
+
+echo "System running. Press Ctrl+C to stop."
+
+trap "echo 'Stopping...'; kill $CPP_PID $PYTHON_PID; exit" INT
+
+wait

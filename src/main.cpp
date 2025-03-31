@@ -1,4 +1,3 @@
-
 #include <thread>
 #include <iostream>
 #include <vector>
@@ -7,6 +6,7 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <sys/types.h>
+#include <fcntl.h> // Added for FIFO write
 
 #include "image_process_pipeline.h"
 #include "utilities.h"
@@ -72,7 +72,7 @@ int main() {
             std::vector<double> softmax_doubles;
             
             for (i = 0; i < 12; i++){
-                std::cerr << pca_coefficients[i] << std::endl;
+                std::cerr << pca_coefficients_send[i]/10000.0 << std::endl;
             }
             /*
             
@@ -97,7 +97,16 @@ int main() {
             
             writeVectorToCSV("./data/softmax_results.csv", softmax_doubles);
             
-            std::cout << "1" << std::flush;
+            // Write "1" to the FIFO instead of stdout
+            int fd = open("/tmp/cpp_to_py_fifo", O_WRONLY | O_NONBLOCK);
+            
+            if (fd == -1) {
+                std::cerr << "failed to open FIFO\n";
+            } else {
+                //std::cerr << "❌ Failed to open FIFO for writing\n";
+                write(fd, "1\n", 2);
+                close(fd);
+            }
         }
         flag_buf = flag;
         usleep(10000); // 10ms

@@ -428,31 +428,41 @@ void process_image(const std::vector<uint8_t>& image,
     success = stbi_write_jpg("data/step_3.jpg", DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, 1, downsampled_image.data(), quality);    
 
     //Step 4: Contrast boost again
-    threshold(downsampled_image, WHITE_THRESHOLD, thresholded_image);
+    //threshold(downsampled_image, WHITE_THRESHOLD, thresholded_image);
     
     quality = 100;  // JPG quality
 
-    success = stbi_write_jpg("data/step_4.jpg", DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, 1, thresholded_image.data(), quality);    
+    //success = stbi_write_jpg("data/step_4.jpg", DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, 1, thresholded_image.data(), quality);    
     
     //Step 5: Apply a gaussian blur
-    std::vector<uint8_t> blurred_image;
-    gaussian_blur(thresholded_image, DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, blurred_image);
+    //std::vector<uint8_t> blurred_image;
+    //gaussian_blur(thresholded_image, DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, blurred_image);
     
-    quality = 100;  // JPG quality
-    success = stbi_write_jpg("data/step_5.jpg", DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, 1, blurred_image.data(), quality);    
+    //quality = 100;  // JPG quality
+    //success = stbi_write_jpg("data/step_5.jpg", DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, 1, blurred_image.data(), quality);    
 
     //Step 6: Darken the gaussian blur
-    darken_image(blurred_image, WHITE_THRESHOLD);
+    //darken_image(blurred_image, WHITE_THRESHOLD);
     
-    quality = 100;  // JPG quality
-    success = stbi_write_jpg("data/step_6.jpg", DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, 1, blurred_image.data(), quality);    
+    //quality = 100;  // JPG quality
+    //success = stbi_write_jpg("data/step_6.jpg", DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, 1, blurred_image.data(), quality);    
 
     //Step 7: Invert 
     std::vector<uint8_t> inverted;
-    invert(blurred_image, inverted);
+    invert(downsampled_image, inverted);
     
     quality = 100;  // JPG quality
     success = stbi_write_jpg("data/step_7.jpg", 24, 24, 1, inverted.data(), quality);   
+    
+    std::vector<uint8_t> output(28*28, 0);
+    
+    for (int y = 0; y < 24; y++){
+        for (int x = 0; x < 24; x++){
+            output[(y+2)*28+(x+2)] = inverted[y*24 + x];
+        }
+    }
+    
+    success = stbi_write_jpg("data/step_7.jpg", 28, 28, 1, output.data(), quality);   
 
     //Step 8: Project to PCA space
     pcaProject(inverted, out);
