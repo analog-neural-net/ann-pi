@@ -3,10 +3,14 @@
 
 #include <iostream>
 //#include <Eigen/Dense>
+#include <cstdint>
 #include <vector>
 #include <cmath>
+#include <algorithm>
+#include <cmath>
+#include <cstdint>
 
-#define BLACK_THRESHOLD 110
+#define BLACK_THRESHOLD 130
 #define WHITE_THRESHOLD 200
 
 #define DOWNSAMPLE_SIZE 24

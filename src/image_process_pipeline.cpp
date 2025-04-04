@@ -15,6 +15,25 @@ void image_processing_init(){
     std::cerr << "Loaded Mean Vector Size: " << __mean_vector.size() << std::endl;
 }
 
+inline int clamp(int val, int min_val, int max_val) {
+    return std::max(min_val, std::min(val, max_val));
+}
+
+inline float clampf(float val, float min_val, float max_val) {
+    return std::max(min_val, std::min(val, max_val));
+}
+
+inline int roundf_to_int(float val) {
+    return static_cast<int>(std::round(val));
+}
+
+float cubic_interpolate(float p0, float p1, float p2, float p3, float t) {
+    return p1 + 0.5f * t * (
+        p2 - p0 + t * (2.0f * p0 - 5.0f * p1 + 4.0f * p2 - p3 +
+        t * (3.0f * (p1 - p2) + p3 - p0)));
+}
+
+
 void gemv(const std::vector<std::vector<double>>& matrix,
           const std::vector<double>& vec, 
           std::vector<double>& out) {
@@ -43,8 +62,8 @@ void find_bounding_box(const std::vector<uint8_t>& image, int width, int height,
                         int& min_x, int& max_x, int& min_y, int& max_y, uint8_t threshold) {
     min_x = width, max_x = 0, min_y = height, max_y = 0;
 
-    int row_threshold = 30;  
-    int col_threshold = 30; 
+    int row_threshold = 5;  
+    int col_threshold = 5; 
 
     // ignore noise near top/bottom edges
     for (int y = 100; y < height - 100; y++) { 
@@ -151,6 +170,72 @@ void crop_to_square(const std::vector<uint8_t>& image, int width, int height,
 }
 
 
+float bicubic_sample(const std::vector<uint8_t>& img, int width, int height, float x, float y) {
+    int ix = static_cast<int>(std::floor(x));
+    int iy = static_cast<int>(std::floor(y));
+    float fx = x - ix;
+    float fy = y - iy;
+
+    float col[4];
+    for (int m = -1; m <= 2; m++) {
+        float row[4];
+        for (int n = -1; n <= 2; n++) {
+            int px = clamp(ix + n, 0, width - 1);
+            int py = clamp(iy + m, 0, height - 1);
+            row[n + 1] = static_cast<float>(img[py * width + px]);
+        }
+        col[m + 1] = cubic_interpolate(row[0], row[1], row[2], row[3], fx);
+    }
+
+    return clampf(cubic_interpolate(col[0], col[1], col[2], col[3], fy), 0.0f, 255.0f);
+}
+
+void find_digit_cubic(const std::vector<uint8_t>& image, int width, int height,
+                                  std::vector<uint8_t>& out, int target_width = 24, int target_height = 24) {
+    // Find bounding box
+    int top = height, bottom = -1, left = width, right = -1;
+
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            if (image[y * width + x] > 25) { // threshold ~ 0.1 * 255
+                top = std::min(top, y);
+                bottom = std::max(bottom, y);
+                left = std::min(left, x);
+                right = std::max(right, x);
+            }
+        }
+    }
+
+    // Initialize output to white
+    out.assign(target_width * target_height, 255);
+
+    if (top > bottom || left > right) {
+        // No digit found
+        return;
+    }
+
+    // Crop
+    int cropped_w = right - left + 1;
+    int cropped_h = bottom - top + 1;
+    std::vector<uint8_t> cropped(cropped_w * cropped_h);
+
+    for (int y = 0; y < cropped_h; ++y) {
+        for (int x = 0; x < cropped_w; ++x) {
+            cropped[y * cropped_w + x] = image[(top + y) * width + (left + x)];
+        }
+    }
+
+    // Bicubic resize
+    for (int y = 0; y < target_height; ++y) {
+        for (int x = 0; x < target_width; ++x) {
+            float src_x = (x + 0.5f) * cropped_w / target_width - 0.5f;
+            float src_y = (y + 0.5f) * cropped_h / target_height - 0.5f;
+            float pixel = bicubic_sample(cropped, cropped_w, cropped_h, src_x, src_y);
+            out[y * target_width + x] = static_cast<uint8_t>(roundf_to_int(pixel));
+        }
+    }
+}
+
 void pcaProject(const std::vector<uint8_t>& image, 
                 std::vector<double>& out) {
     
@@ -183,6 +268,7 @@ void pcaProject(const std::vector<uint8_t>& image,
         if (fabs(out[i]) > max){
             max = fabs(out[i]);
         }
+        //std::cerr << out[i] << std::endl;
     }
     
     //std::cerr << "=======================================\n";
@@ -194,6 +280,7 @@ void pcaProject(const std::vector<uint8_t>& image,
     
     for (int i = 0; i < num_components; i++){
         out[i] = 0.625*(out[i]/max);
+        //std::cerr << out[i] << std::endl;
     }
     //std::cerr << "=======================================\n";
     
@@ -204,6 +291,7 @@ void pcaProject(const std::vector<uint8_t>& image,
     
     for (int i = 0; i < num_components; i++){
         out[i] = round(out[i]/scale) * scale;
+        //std::cerr << out[i] << std::endl;
     }
     //std::cerr << "=======================================\n";
 }
@@ -275,6 +363,18 @@ void darken_image(std::vector<uint8_t>& image,
     for (int i = 0; i < image.size(); i++) {
         if (image[i] < threshold) {
             image[i] = static_cast<uint8_t>(image[i] * factor);
+        }
+    }
+}
+
+void lighten_image(std::vector<uint8_t>& image,
+                   uint8_t threshold,
+                   float factor = 1.2f){
+    
+    for (int i = 0; i < image.size(); i++){
+        if (image[i] > threshold){
+            float brightened = image[i] * factor;
+            image[i] = static_cast<uint8_t>(std::min(255.0f, brightened));
         }
     }
 }
@@ -403,7 +503,7 @@ void process_image(const std::vector<uint8_t>& image,
     
     //crop(cropped_centered, width, height, 1000, 1000, center_crop);
     add_circular_brightness(cropped_centered, width, height, center_crop, 2.5, 3.5);
-    success = stbi_write_jpg("data/step_1.5.jpg", width, height, 1, center_crop.data(), quality);    
+    //success = stbi_write_jpg("data/step_1.5.jpg", width, height, 1, center_crop.data(), quality);    
     
 
     //Step 2: Contrast boost
@@ -412,25 +512,25 @@ void process_image(const std::vector<uint8_t>& image,
     
     //width = 1000; height = 1000;
 
-    quality = 100;  // JPG quality
-    success = stbi_write_jpg("data/step_2.jpg", width, height, 1, thresholded_image.data(), quality);    
+    //quality = 100; 
+    //success = stbi_write_jpg("data/step_2.jpg", width, height, 1, thresholded_image.data(), quality);    
     
     std::vector<uint8_t> digit_bound;
     crop_to_square(thresholded_image, width, height, digit_bound, new_size, BLACK_THRESHOLD);
     
-    success = stbi_write_jpg("data/step_2.5.jpg", new_size, new_size, 1, digit_bound.data(), quality);  
+    //success = stbi_write_jpg("data/step_2.5.jpg", new_size, new_size, 1, digit_bound.data(), quality);  
 
     //Step 3: Downsample the image
     std::vector<uint8_t> downsampled_image;
     downsampleInterArea(digit_bound, new_size, new_size, DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, downsampled_image);
     
-    quality = 100;  // JPG quality
-    success = stbi_write_jpg("data/step_3.jpg", DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, 1, downsampled_image.data(), quality);    
+    //quality = 100; 
+    //success = stbi_write_jpg("data/step_3.jpg", DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, 1, downsampled_image.data(), quality);    
 
     //Step 4: Contrast boost again
     //threshold(downsampled_image, WHITE_THRESHOLD, thresholded_image);
     
-    quality = 100;  // JPG quality
+    //quality = 100; 
 
     //success = stbi_write_jpg("data/step_4.jpg", DOWNSAMPLE_SIZE, DOWNSAMPLE_SIZE, 1, thresholded_image.data(), quality);    
     
@@ -452,7 +552,7 @@ void process_image(const std::vector<uint8_t>& image,
     invert(downsampled_image, inverted);
     
     quality = 100;  // JPG quality
-    success = stbi_write_jpg("data/step_7.jpg", 24, 24, 1, inverted.data(), quality);   
+    //success = stbi_write_jpg("data/step_7.jpg", 24, 24, 1, inverted.data(), quality);   
     
     std::vector<uint8_t> output(28*28, 0);
     
@@ -462,10 +562,20 @@ void process_image(const std::vector<uint8_t>& image,
         }
     }
     
-    success = stbi_write_jpg("data/step_7.jpg", 28, 28, 1, output.data(), quality);   
+    std::vector<uint8_t> blurred_image;
+    gaussian_blur(output, 28, 28, blurred_image);
+    
+    lighten_image(blurred_image, 2, 3.5f);
+    
+    //success = stbi_write_jpg("data/step_7.jpg", 28, 28, 1, blurred_image.data(), quality);   
+    
+    
+    std::vector<uint8_t> output_for_pca(24*24, 0);
+    find_digit_cubic(blurred_image, 28, 28, output_for_pca, 24, 24);
 
+    success = stbi_write_jpg("data/step_8.jpg", 24, 24, 1, output_for_pca.data(), quality);   
     //Step 8: Project to PCA space
-    pcaProject(inverted, out);
+    pcaProject(output_for_pca, out);
     
 }
 

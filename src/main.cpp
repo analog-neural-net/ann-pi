@@ -46,11 +46,11 @@ int main() {
         int flag = gpio_read(27); // Check the push button
         if(!flag && flag_buf) {
 
-            std::cerr << "Image capture started\n";
+            //std::cerr << "Image capture started\n";
             capture_grayscale_image(ctx, image_data);
-            std::cerr << "Image capture complete\n";
+            //std::cerr << "Image capture complete\n";
             
-            stbi_write_jpg("data/image.jpg", 1440, 1440, 1, image_data.data(), 100);
+            //stbi_write_jpg("data/image.jpg", 1440, 1440, 1, image_data.data(), 100);
             
             process_image(image_data, 1440, 1440, pca_coefficients);
             
@@ -63,37 +63,39 @@ int main() {
             
             uart_send_pca_data(pca_coefficients_send);
             
-            std::cerr << "Data sent to STM!\n";
+            //std::cerr << "Data sent to STM!\n";
             
-            
-            int i = 0;
+
             uint8_t bytes[4];
             int32_t softmax_result[10];
-            std::vector<double> softmax_doubles;
             
-            for (i = 0; i < 12; i++){
+            /*
+            for (int i = 0; i < 12; i++){
                 std::cerr << pca_coefficients_send[i]/10000.0 << std::endl;
             }
-            /*
+            */
             
+            //std::cerr << "=======================================\n";
+            int i = 0; 
             while(i < 10){
                 for (int j = 0; j < 4; j++){
                     bytes[j] =  uart_receive_char();
                 }
                 softmax_result[i] = 0;
-                softmax_result[i] |= (bytes[3]);
-                softmax_result[i] |= (bytes[2] << 8);
-                softmax_result[i] |= (bytes[1] << 16);
-                softmax_result[i] |= (bytes[0] << 24);
+                softmax_result[i] |= (bytes[0]);
+                softmax_result[i] |= (bytes[1] << 8);
+                softmax_result[i] |= (bytes[2] << 16);
+                softmax_result[i] |= (bytes[3] << 24);
+                
                 i++;
             }
             std::vector<double> softmax_doubles;
             softmax_doubles.assign(10, 0);
             for (int x = 0; x < 10; x++){
-                std::cout << softmax_result[x]/10000.0 << std::endl;
+                std::cout << (float)softmax_result[x]/10000.0 << std::endl;
                 softmax_doubles[x] = softmax_result[x]/10000.0;
             }
-            */
+            
             
             writeVectorToCSV("./data/softmax_results.csv", softmax_doubles);
             
