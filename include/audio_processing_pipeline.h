@@ -11,17 +11,14 @@
 #include <fstream>
 #include <cstdlib>
 
-#define BLACK_THRESHOLD 130
-#define WHITE_THRESHOLD 200
 
-#define DOWNSAMPLE_SIZE 24
+#define AUDIO_SAMPLE_RATE 22050
+#define AUDIO_WINDOW_SIZE 2048
+#define AUDIO_HOP_SIZE 512
+#define AUDIO_NUM_MFCC 12
+#define AUDIO_PCA_FEATURES 12
+#define AUDIO_PCA_COMPONENTS 12
 
-#define FEATURES 576
-#define COMPONENTS 12
-// typedef enum{
-//     THRESHOLD_UP = 0,
-//     THRESHOLD_DOWN = 1,
-// }DIRECTION
 
 extern std::vector<std::vector<double>> __pca_components;
 extern std::vector<double> __mean_vector;
