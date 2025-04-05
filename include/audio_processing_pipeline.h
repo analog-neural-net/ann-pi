@@ -24,3 +24,4 @@ extern std::vector<std::vector<double>> __pca_components;
 extern std::vector<double> __mean_vector;
 
 void audio_processing_init();
+#endif
