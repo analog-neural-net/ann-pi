@@ -7,8 +7,9 @@
 #include <vector>
 #include <cmath>
 #include <algorithm>
-#include <cmath>
-#include <cstdint>
+#include <numeric>
+#include <fstream>
+#include <cstdlib>
 
 #define BLACK_THRESHOLD 130
 #define WHITE_THRESHOLD 200
