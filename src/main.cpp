@@ -8,6 +8,7 @@
 #include <sys/types.h>
 #include <fcntl.h> // Added for FIFO write
 
+#include "audio_processing_pipeline.h"
 #include "image_process_pipeline.h"
 #include "utilities.h"
 #include "gpio.h"
@@ -22,6 +23,7 @@ int main() {
     gpio_init();
     uart_init();
     image_processing_init();
+    audio_processing_init();
 
     gpio_func_select(OUTPUT, 16);
     gpio_func_select(INPUT, 27);

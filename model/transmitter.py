@@ -13,7 +13,7 @@ if not os.path.exists(FIFO_PATH):
 my_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 my_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-my_socket.bind(('192.168.0.15', 2663))
+my_socket.bind(('100.113.45.98', 2663))
 my_socket.listen()
 
 conn, addr = my_socket.accept()
