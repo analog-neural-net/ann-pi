@@ -69,6 +69,13 @@ void uart_init() {
     */   
 }
 
+void uart_clear_rx_buffer() {
+    while (!(uart_base[UART_FR / 4] & (1 << 4))) {
+        volatile uint32_t dummy = uart_base[UART_DR / 4];
+        (void)dummy;
+    }
+}
+
 void uart_send_char(char c) {
     while (uart_base[UART_FR / 4] & (1 << 5)) {} // wait for TX ready
     uart_base[UART_DR / 4] = c;
